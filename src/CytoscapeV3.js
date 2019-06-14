@@ -61,11 +61,17 @@ let conf = {
   ],
 };
 
-class Cytoscape extends Component{
+class CytoscapeV3 extends Component{
   cy = null;
 
+  constructor(props) {
+      super(props)
+      this.cyelement = React.createRef()
+      
+  }
+
   componentDidMount(){
-    conf.container = this.refs.cyelement;
+    conf.container = this.cyelement
     let cy = cytoscape(conf);
 
     this.cy = cy;
@@ -89,8 +95,8 @@ class Cytoscape extends Component{
   }
 
   render(){
-    return <div style={cyStyle} ref="cyelement" />
+    return <div style={cyStyle} ref={this.cyelement} />
   }
 }
 
-export default Cytoscape;
+export default CytoscapeV3;
