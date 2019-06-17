@@ -1,8 +1,8 @@
 import React from 'react'
 import logo from './logo.svg'
 import './App.css'
-import Parent from './Parent'
-import ParentV2 from './ParentV2'
+// import Parent from './Parent'
+// import ParentV2 from './ParentV2'
 import ParentV3 from './ParentV3'
 
 class App extends React.Component {

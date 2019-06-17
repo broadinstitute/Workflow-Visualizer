@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import Cytoscape from './Cytoscape'
+import CytoscapeV3 from './CytoscapeV3'
 import Sidebar from 'react-sidebar'
 import './ParentV3.css'
 var DetailedNodeView = require('./DetailedNodeView')
@@ -105,8 +105,8 @@ class ParentV3 extends Component {
     // this.refs.graph.getCy().on(....)
     var refCy = this.graph.current.getCy()
     refCy.add([
-      { group: 'nodes', data: { id: 'hello', name: 'hello' }, position: { x: 0, y: 0 } },
-      { group: 'nodes', data: { id: 'bye', name: 'bye' }, position: { x: 0, y: 0 } },
+      { group: 'nodes', data: { id: 'hello', name: 'hello', status: 'PENDING' }, position: { x: 0, y: 0 } },
+      { group: 'nodes', data: { id: 'bye', name: 'bye', status: 'RECEIVED' }, position: { x: 0, y: 0 } },
       { group: 'edges', data: { id: 'edge', source: 'hello', target: 'bye' } }
     ])
 
@@ -132,7 +132,7 @@ class ParentV3 extends Component {
 
         <button onClick={this.addSingleRandomNode}>add node</button>
         <div className='flexbox-container'>
-          <Cytoscape className="cyto-model" ref={this.graph} elements={[{ data: { id: 'a', name: 'a' } }]} />
+          <CytoscapeV3 className="cyto-model" ref={this.graph} elements={[{ data: { id: 'a', name: 'a' } }]} />
           <DetailedNodeView className="node-view" selectedNode={this.state.tappedNode} chooseLayout={this.chooseLayout}/>
 
         </div>

@@ -3,7 +3,7 @@ import cytoscape from 'cytoscape';
 
 
 let cyStyle = {
-  height: '500px',
+  height: '800px',
   width: '100%',
   background: 'white'
 
@@ -17,34 +17,34 @@ let conf = {
       {
           selector: 'node',
           style: {
-            'shape' : 'hexagon',
-            'background-color' :'#FC4445',
+            'shape' : 'circle',
+            'background-color': function (ele) {
+                const nodeData = ele.data();
+
+                switch (nodeData.status) {
+                    case 'SUCCESS':
+                        return "#00b200";
+                    case 'PENDING':
+                        return "#737373";
+                    case 'FAILURE':
+                        return "#b20000";
+                    case 'RECEIVED':
+                        return "#e59400";
+                    default:
+                        return "#bf00ff";
+
+                }
+            },
             'content' : 'data(name)',
-            'text-valign': 'center',
+            'text-valign': 'bottom',
             'width': 100,
-            'height': 100
+            'height': 100,
+            'opacity': '0.90' 
             
-              // 'content': 'data(data.task)',
-              // 'text-opacity': 0.5,
-              // 'text-valign': 'center',
-              // 'text-halign': 'right',
-              // 'background-color': function (ele) {
-              //     const nodeData = ele.data();
-
-              //     switch (nodeData.data.status) {
-              //         case 'SUCCESS':
-              //             return "#00b200";
-              //         case 'PENDING':
-              //             return "#737373";
-              //         case 'FAILURE':
-              //             return "#b20000";
-              //         case 'RECEIVED':
-              //             return "#e59400";
-              //         default:
-              //             return "#9366b4";
-
-              //     }
-              // }
+            //   'content': 'data(data.task)',
+            //   'text-opacity': 0.5,
+            //   'text-valign': 'center',
+            //   'text-halign': 'right',
           }
       },
       {
@@ -71,7 +71,7 @@ class CytoscapeV3 extends Component{
   }
 
   componentDidMount(){
-    conf.container = this.cyelement
+    conf.container = this.cyelement.current
     let cy = cytoscape(conf);
 
     this.cy = cy;

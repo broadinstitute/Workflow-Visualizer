@@ -1,12 +1,10 @@
 import React, {Component} from 'react';
 import cytoscape from 'cytoscape';
 
-
 let cyStyle = {
-  height: '500px',
+  height: '800px',
   width: '100%',
-  background: 'white'
-
+  background: 'red'
 };
 
 let conf = {
@@ -17,13 +15,13 @@ let conf = {
       {
           selector: 'node',
           style: {
-            'shape' : 'hexagon',
+            'shape' : 'square',
             'background-color' :'#FC4445',
             'content' : 'data(name)',
             'text-valign': 'center',
             'width': 100,
             'height': 100
-            
+
               // 'content': 'data(data.task)',
               // 'text-opacity': 0.5,
               // 'text-valign': 'center',

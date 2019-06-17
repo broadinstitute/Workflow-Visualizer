@@ -16,7 +16,7 @@ let conf = {
     {
       selector: 'node',
       style: {
-        'shape': 'hexagon',
+        'shape': 'square',
         'background-color': '#FC4445',
         'content': 'data(name)',
         'text-valign': 'center',
