@@ -4,7 +4,29 @@ let divStyle = {
   height: '100%',
   width: '20%',
   background: 'white'
+}
 
+function CreateSidebarUI (props) {
+  var circleStyle = {
+    width: 50,
+    height: 50,
+    borderRadius: 100 / 2,
+    backgroundColor: '#bf00ff'
+  }
+  return (
+    <div className="detailed-node-div" style={divStyle}>
+      <h3>Close View</h3>
+      <select value={props.currentSelectValue} onChange={props.changeLayout}>
+        <option value="breadthfirst">Breadthfirst</option>
+        <option value="circle">Circle</option>
+        <option value="grid">Grid</option>
+        <option value="random">Random</option>
+      </select>
+      <p>You've selected node {props.selectedNode}</p>
+      <div style={circleStyle}></div>
+
+    </div>
+  )
 }
 
 class DetailedNodeView extends React.Component {
@@ -26,18 +48,9 @@ class DetailedNodeView extends React.Component {
 
   render () {
     return (
-      <div className="detailed-node-div" style={divStyle}>
-        <h3>Close View</h3>
-        <p>You've selected node {this.props.selectedNode}</p>
-        <select value={this.state.currentSelectValue} onChange={this.changeLayout}>
-          <option value="breadthfirst">Breadthfirst</option>
-          <option value="circle">Circle</option>
-          <option value="grid">Grid</option>
-          <option value="random">Random</option>
-        </select>
-
-      </div>
-
+      <CreateSidebarUI selectedNode= {this.props.selectedNode}
+        currentSelectValue = {this.state.currentSelectValue}
+        changeLayout = {this.changeLayout} />
     )
   }
 }
