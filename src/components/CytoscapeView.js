@@ -1,12 +1,13 @@
 import React, {Component} from 'react';
 import cytoscape from 'cytoscape';
+import { SSL_OP_SINGLE_DH_USE } from 'constants';
 
 
 let cyStyle = {
   height: '800px',
   width: '100%',
-  background: 'white'
-
+  background: 'white',
+  borderStyle: 'solid'
 };
 
 let conf = {
@@ -40,11 +41,6 @@ let conf = {
             'width': 100,
             'height': 100,
             'opacity': '0.90' 
-            
-            //   'content': 'data(data.task)',
-            //   'text-opacity': 0.5,
-            //   'text-valign': 'center',
-            //   'text-halign': 'right',
           }
       },
       {
@@ -61,7 +57,7 @@ let conf = {
   ],
 };
 
-class CytoscapeV3 extends Component{
+class CytoscapeView extends Component{
   cy = null;
 
   constructor(props) {
@@ -79,7 +75,7 @@ class CytoscapeV3 extends Component{
   }
 
   shouldComponentUpdate(){
-    return false;
+    return true
   }
 
   componentWillReceiveProps(nextProps){
@@ -99,4 +95,4 @@ class CytoscapeV3 extends Component{
   }
 }
 
-export default CytoscapeV3;
+export default CytoscapeView;

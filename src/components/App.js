@@ -1,9 +1,8 @@
 import React from 'react'
-import logo from './logo.svg'
-import './App.css'
+import '../App.css'
 // import Parent from './Parent'
 // import ParentV2 from './ParentV2'
-import ParentV3 from './ParentV3'
+import MainGraphView from './MainGraphView'
 
 class App extends React.Component {
   constructor (props) {
@@ -17,7 +16,7 @@ class App extends React.Component {
     return (
       <div className="App">
         <header className="App-header">
-          <ParentV3 />
+          <MainGraphView />
         </header>
       </div>
     )

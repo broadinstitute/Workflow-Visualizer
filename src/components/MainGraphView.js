@@ -1,29 +1,24 @@
 import React, { Component } from 'react'
-import CytoscapeV3 from './CytoscapeV3'
-import Sidebar from 'react-sidebar'
-import './ParentV3.css'
-var DetailedNodeView = require('./DetailedNodeView')
+import CytoscapeView from './CytoscapeView'
+import '../MainGraphView.css'
+var DetailedNodeView = require('./InfoSidebar')
 var parse = require('dotparser')
+var api = require('../utils/api')
 
-class ParentV3 extends Component {
+class MainGraphView extends Component {
   constructor (props) {
     super(props)
     this.state = {
-      tappedNode: '123'
+      tappedNode: '',
+      metadata: ''
     }
 
     this.graph = React.createRef()
 
     this.readDotFile = this.readDotFile.bind(this)
-    this.addSingleRandomNode = this.addSingleRandomNode.bind(this)
     this.updateSelectedNode = this.updateSelectedNode.bind(this)
     this.chooseLayout = this.chooseLayout.bind(this)
     this.changeLayout = this.changeLayout.bind(this)
-  }
-
-  addSingleRandomNode () {
-    var myCy = this.graph.current.getCy()
-    myCy.add([{ group: 'nodes', data: { id: 'AGGRO', name: 'AGGRO' }, position: { x: 0, y: 0 } }])
   }
 
   updateSelectedNode (nodeID) {
@@ -37,34 +32,6 @@ class ParentV3 extends Component {
     myCy.layout({
       name: layoutType
     }).run()
-  }
-
-  chooseLayout (text) {
-    // var myCy = this.graph.current.getCy()
-    // console.log(text)
-
-    // if (text === 'breadthfirst') {
-    //   myCy.layout({
-    //     name: 'breadthfirst'
-    //   }).run()
-    // } else if (text === 'circle') {
-    //   myCy.layout({
-    //     name: 'circle'
-    //   }).run()
-    // } else if (text === 'grid') {
-
-    // } else if (text === 'random') {
-
-    // } else {
-    //   console.warn(text + 'is an invalid layout format')
-    // }
-
-    console.log(text)
-    if (text !== 'breadthfirst' && text !== 'circle' && text !== 'grid' && text !== 'random') {
-      console.warn('\"' + text + '\" is an invalid layout format')
-    } else {
-      this.changeLayout(text)
-    }
   }
 
   readDotFile (cy) {
@@ -96,8 +63,17 @@ class ParentV3 extends Component {
           { group: 'edges', data: { id: 'edge' + i, source: fromNode.id, target: toNode.id } }
         ])
       } else {
-        // this shouldn't actually happen
+        console.warn('Unrecognized dot format')
       }
+    }
+  }
+
+  chooseLayout (text) {
+    console.log(text)
+    if (text !== 'breadthfirst' && text !== 'circle' && text !== 'grid' && text !== 'random') {
+      console.warn('\"' + text + '\" is an invalid layout format')
+    } else {
+      this.changeLayout(text)
     }
   }
 
@@ -105,6 +81,7 @@ class ParentV3 extends Component {
     // this is a good place for events
     // this.refs.graph.getCy().on(....)
     var refCy = this.graph.current.getCy()
+
     refCy.add([
       { group: 'nodes', data: { id: 'hello', name: 'hello', status: 'PENDING' }, position: { x: 0, y: 0 } },
       { group: 'nodes', data: { id: 'bye', name: 'bye', status: 'RECEIVED' }, position: { x: 0, y: 0 } },
@@ -113,33 +90,36 @@ class ParentV3 extends Component {
 
     this.readDotFile(refCy)
 
-    var parentComponent = this
+    var thisComponent = this
 
     refCy.on('tapend', 'node', function (evt) {
       var node = evt.target
-      console.log('tapped ' + node.id())
-      parentComponent.updateSelectedNode(node.id())
+      thisComponent.updateSelectedNode(node.id())
     })
 
     refCy.layout({
       name: 'breadthfirst'
     }).run()
+
+    api.fetchMetadata('85d710ba-cf2c-4a40-9ab9-b825f506222c')
+      .then(function (jsonMetadata) {
+        console.log(jsonMetadata)
+        this.setState({
+          metadata: jsonMetadata
+        })
+      }.bind(this))
   }
 
   render () {
     return (
 
-      <div>
-
-        <button onClick={this.addSingleRandomNode}>add node</button>
-        <div className='flexbox-container'>
-          <CytoscapeV3 className="cyto-model" ref={this.graph} elements={[{ data: { id: 'a', name: 'a' } }]} />
-          <DetailedNodeView className="node-view" selectedNode={this.state.tappedNode} chooseLayout={this.chooseLayout}/>
-
-        </div>
+      <div className='flexbox-container'>
+        <CytoscapeView className="cyto-model" ref={this.graph} elements={[{ data: { id: 'a', name: 'a' } }]} />
+        <DetailedNodeView className="node-view" selectedNode={this.state.tappedNode} chooseLayout={this.chooseLayout} metadata={this.state.metadata}/>
       </div>
+
     )
   }
 }
 
-export default ParentV3
+export default MainGraphView

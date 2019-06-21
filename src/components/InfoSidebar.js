@@ -3,16 +3,18 @@ var React = require('react')
 let divStyle = {
   height: '100%',
   width: '20%',
-  background: 'white'
+  background: 'white',
+  padding: '0px 0px 0px 10px'
 }
 
-function CreateSidebarUI (props) {
+function RenderInfoSidebarUI (props) {
   var circleStyle = {
     width: 50,
     height: 50,
     borderRadius: 100 / 2,
     backgroundColor: '#bf00ff'
   }
+  var stringMetadata = JSON.stringify(props.metadata)
   return (
     <div className="detailed-node-div" style={divStyle}>
       <h3>Close View</h3>
@@ -22,14 +24,15 @@ function CreateSidebarUI (props) {
         <option value="grid">Grid</option>
         <option value="random">Random</option>
       </select>
-      <p>You've selected node {props.selectedNode}</p>
+      <p>You've selected node <strong>"{props.selectedNode}"</strong></p>
       <div style={circleStyle}></div>
+      <p>{stringMetadata}</p>
 
     </div>
   )
 }
 
-class DetailedNodeView extends React.Component {
+class InfoSidebar extends React.Component {
   constructor (props) {
     super(props)
 
@@ -48,11 +51,11 @@ class DetailedNodeView extends React.Component {
 
   render () {
     return (
-      <CreateSidebarUI selectedNode= {this.props.selectedNode}
+      <RenderInfoSidebarUI selectedNode= {this.props.selectedNode}
         currentSelectValue = {this.state.currentSelectValue}
-        changeLayout = {this.changeLayout} />
+        changeLayout = {this.changeLayout} metadata={this.props.metadata}/>
     )
   }
 }
 
-module.exports = DetailedNodeView
+module.exports = InfoSidebar
