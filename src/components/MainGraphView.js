@@ -10,7 +10,7 @@ class MainGraphView extends Component {
     super(props)
     this.state = {
       tappedNode: '',
-      metadata: ''
+      metadata: null
     }
 
     this.graph = React.createRef()
@@ -19,19 +19,53 @@ class MainGraphView extends Component {
     this.updateSelectedNode = this.updateSelectedNode.bind(this)
     this.chooseLayout = this.chooseLayout.bind(this)
     this.changeLayout = this.changeLayout.bind(this)
+    this.updateUIWithLatestApiQuery = this.updateUIWithLatestApiQuery.bind(this)
   }
 
   updateSelectedNode (nodeID) {
     this.setState({
       tappedNode: nodeID
     })
+    console.log('We are about to update UI!!')
+    this.updateUIWithLatestApiQuery()
   }
 
   changeLayout (layoutType) {
     var myCy = this.graph.current.getCy()
     myCy.layout({
-      name: layoutType
+      name: layoutType,
+      fit: true,
+      animate: true,
+      animationDuration: 500,
+      animationEasing: undefined
     }).run()
+  }
+
+  updateUIWithLatestApiQuery () {
+    var refCy = this.graph.current.getCy()
+    api.fetchMetadata('e7029d33-0bd1-48ff-94ab-ce2337c208eb')
+      .then(function (jsonMetadata) {
+        console.log(jsonMetadata)
+        this.setState({
+          metadata: jsonMetadata
+        })
+
+        var calls = jsonMetadata.data.calls
+
+        for (var singleCall in calls) {
+          if (calls.hasOwnProperty(singleCall)) {
+            var dotIndex = singleCall.indexOf('.')
+            var name = singleCall.substring(dotIndex + 1)
+            var nodeBoi = refCy.getElementById('call ' + name)
+            var executionStatus = calls[singleCall][0].executionStatus
+            if (executionStatus === 'Done') {
+              nodeBoi.data('status', 'SUCCESS')
+            } else if (executionStatus === 'Running') {
+              nodeBoi.data('status', 'PENDING')
+            }
+          }
+        }
+      }.bind(this))
   }
 
   readDotFile (cy) {
@@ -52,8 +86,8 @@ class MainGraphView extends Component {
       if (child.type === 'attr_stmt') {
         // do nothing for now. Later, we can consider messing with the CSS and displaying, but that seems more trouble than its worth.
       } else if (child.type === 'node_stmt') {
-        var node_id = child.node_id.id
-        cy.add([{ group: 'nodes', data: { id: node_id, name: node_id }, position: { x: 0, y: 0 } }])
+        var nodeId = child.node_id.id
+        cy.add([{ group: 'nodes', data: { id: nodeId, name: nodeId }, position: { x: 0, y: 0 } }])
       } else if (child.type === 'edge_stmt') {
         var fromNode = child.edge_list[0]
         var toNode = child.edge_list[1]
@@ -70,7 +104,7 @@ class MainGraphView extends Component {
 
   chooseLayout (text) {
     console.log(text)
-    if (text !== 'breadthfirst' && text !== 'circle' && text !== 'grid' && text !== 'random') {
+    if (text !== 'breadthfirst' && text !== 'cose' && text !== 'circle' && text !== 'grid' && text !== 'random') {
       console.warn('\"' + text + '\" is an invalid layout format')
     } else {
       this.changeLayout(text)
@@ -82,11 +116,11 @@ class MainGraphView extends Component {
     // this.refs.graph.getCy().on(....)
     var refCy = this.graph.current.getCy()
 
-    refCy.add([
-      { group: 'nodes', data: { id: 'hello', name: 'hello', status: 'PENDING' }, position: { x: 0, y: 0 } },
-      { group: 'nodes', data: { id: 'bye', name: 'bye', status: 'RECEIVED' }, position: { x: 0, y: 0 } },
-      { group: 'edges', data: { id: 'edge', source: 'hello', target: 'bye' } }
-    ])
+    // refCy.add([
+    //   { group: 'nodes', data: { id: 'hello', name: 'hello', status: 'PENDING' }, position: { x: 0, y: 0 } },
+    //   { group: 'nodes', data: { id: 'bye', name: 'bye', status: 'RECEIVED' }, position: { x: 0, y: 0 } },
+    //   { group: 'edges', data: { id: 'edge', source: 'hello', target: 'bye' } }
+    // ])
 
     this.readDotFile(refCy)
 
@@ -101,20 +135,14 @@ class MainGraphView extends Component {
       name: 'breadthfirst'
     }).run()
 
-    api.fetchMetadata('85d710ba-cf2c-4a40-9ab9-b825f506222c')
-      .then(function (jsonMetadata) {
-        console.log(jsonMetadata)
-        this.setState({
-          metadata: jsonMetadata
-        })
-      }.bind(this))
+    this.updateUIWithLatestApiQuery()
   }
 
   render () {
     return (
 
       <div className='flexbox-container'>
-        <CytoscapeView className="cyto-model" ref={this.graph} elements={[{ data: { id: 'a', name: 'a' } }]} />
+        <CytoscapeView className="cyto-model" ref={this.graph} elements={[]} />
         <DetailedNodeView className="node-view" selectedNode={this.state.tappedNode} chooseLayout={this.chooseLayout} metadata={this.state.metadata}/>
       </div>
 

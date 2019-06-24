@@ -2,6 +2,7 @@
   "name": "cyto-model-approach",
   "version": "0.1.0",
   "private": true,
+  "proxy": "http://localhost:8080",
   "dependencies": {
     "cytoscape": "^3.7.1",
     "dotparser": "^0.4.0",

@@ -24,11 +24,11 @@ let conf = {
 
                 switch (nodeData.status) {
                     case 'SUCCESS':
-                        return "#00b200";
+                        return "#003366";
                     case 'PENDING':
-                        return "#737373";
+                        return "#00b200";
                     case 'FAILURE':
-                        return "#b20000";
+                        return "#ff0000";
                     case 'RECEIVED':
                         return "#e59400";
                     default:
