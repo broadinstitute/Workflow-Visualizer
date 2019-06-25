@@ -1,6 +1,6 @@
 import React, {Component} from 'react';
 import cytoscape from 'cytoscape';
-import { SSL_OP_SINGLE_DH_USE } from 'constants';
+// import { SSL_OP_SINGLE_DH_USE } from 'constants';
 
 
 let cyStyle = {
@@ -23,14 +23,14 @@ let conf = {
                 const nodeData = ele.data();
 
                 switch (nodeData.status) {
-                    case 'SUCCESS':
+                    case 'Done':
                         return "#003366";
-                    case 'PENDING':
+                    case 'Running':
                         return "#00b200";
-                    case 'FAILURE':
+                    case 'Failed':
                         return "#ff0000";
-                    case 'RECEIVED':
-                        return "#e59400";
+                    case 'Parent':
+                      return "#D3D3D3"
                     default:
                         return "#bf00ff";
 

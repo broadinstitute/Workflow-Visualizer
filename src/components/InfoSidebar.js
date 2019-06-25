@@ -19,8 +19,8 @@ function RenderInfoSidebarUI (props) {
     <div className="detailed-node-div" style={divStyle}>
       <h3>Close View</h3>
       <select value={props.currentSelectValue} onChange={props.changeLayout}>
-        <option value="breadthfirst">Breadthfirst</option>
         <option value="cose">Cose</option>
+        <option value="breadthfirst">Breadthfirst</option>
         <option value="circle">Circle</option>
         <option value="grid">Grid</option>
         <option value="random">Random</option>
@@ -39,7 +39,7 @@ class InfoSidebar extends React.Component {
     super(props)
 
     this.state = {
-      currentSelectValue: 'breadthfirst'
+      currentSelectValue: 'cose'
     }
     this.changeLayout = this.changeLayout.bind(this)
   }
