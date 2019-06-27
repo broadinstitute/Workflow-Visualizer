@@ -19,8 +19,7 @@ class MainGraphView extends Component {
     this.updateSelectedNode = this.updateSelectedNode.bind(this)
     this.chooseLayout = this.chooseLayout.bind(this)
     this.changeLayout = this.changeLayout.bind(this)
-    this.updateUIWithLatestApiQuery = this.updateUIWithLatestApiQuery.bind(this)
-    this.isolateTaskName = this.isolateTaskName.bind(this)
+    this.updateUIWithLatestApiQuery = this.dynamicallyUpdateUIWithApiQuery.bind(this)
     this.parseChildrenTypesToBuildGraph = this.parseChildrenTypesToBuildGraph.bind(this)
     this.makeOrMoveNode = this.makeOrMoveNode.bind(this)
   }
@@ -31,7 +30,7 @@ class MainGraphView extends Component {
     })
 
     // Update UI whenever we click on a node
-    this.updateUIWithLatestApiQuery()
+    this.dynamicallyUpdateUIWithApiQuery()
   }
 
   // Many more options for layouts that are specific per layout type e.g cose, breadthfirst. Something to add later?
@@ -48,9 +47,9 @@ class MainGraphView extends Component {
     }).run()
   }
 
-  updateUIWithLatestApiQuery () {
+  dynamicallyUpdateUIWithApiQuery () {
     var cy = this.graph.current.getCy()
-    api.fetchMetadata('ff5cef43-81b3-4b11-a250-e47dbe81c13a')
+    api.fetchMetadata('a66251b8-0721-4ac0-bba7-1ef25a87737c')
       .then(function (jsonMetadata) {
         console.log(jsonMetadata)
         this.setState({
@@ -61,17 +60,80 @@ class MainGraphView extends Component {
 
         for (var singleCall in calls) {
           if (calls.hasOwnProperty(singleCall)) {
-            var dotIndex = singleCall.indexOf('.')
-            var name = singleCall.substring(dotIndex + 1)
-            var nodeBoi = cy.getElementById(name)
-            var executionStatus = calls[singleCall][0].executionStatus
-            nodeBoi.data('status', executionStatus)
+            let nodeId = this.isolateTaskName(singleCall, '.')
+            let nodeBoi = cy.getElementById(nodeId)
+            let currentTaskArray = calls[singleCall]
+
+            if (currentTaskArray.length === 0) {
+              console.log('Task of length 0 observed. Nothing was done with it')
+            } else if (currentTaskArray.length === 1) {
+              // single tasks, so the status should just be updated
+              let executionStatus = calls[singleCall][0].executionStatus
+              nodeBoi.data('status', executionStatus)
+            } else {
+              // SCATTER CALL
+              // assumed to be a scatter task. I will convert the current scattered-task into a parent and build
+              // the individual sharded tasks inside the parent.
+              const newParentStatus = 'Parent'
+              nodeBoi.data('status', newParentStatus)
+
+              let listOfOutgoingNodes = this.getOutgoingNodes(nodeBoi)
+              let listOfIncomingNodes = this.getIncomingNodes(nodeBoi)
+
+              currentTaskArray.forEach(function (singleShard) {
+                let shardId = 'shard_' + singleShard.shardIndex + '_of_' + nodeId
+                cy.add([{ group: 'nodes',
+                  data: { id: shardId, name: shardId, parent: nodeId, status: singleShard.executionStatus } }])
+
+                listOfOutgoingNodes.forEach(function (outgoingNeighbor) {
+                  cy.add([{ group: 'edges',
+                    data: { id: 'edge_from_' + shardId + '_to_' + outgoingNeighbor,
+                      source: shardId,
+                      target: outgoingNeighbor } }])
+                })
+
+                listOfIncomingNodes.forEach(function (incomingNeighbor) {
+                  cy.add([{ group: 'edges',
+                  data: { id: 'edge_from_' + incomingNeighbor+ '_to_' + shardId,
+                    source: incomingNeighbor,
+                    target: shardId } }])
+                })
+
+                
+
+
+              })
+            }
           }
         }
       }.bind(this))
   }
 
-  isolateTaskName (fullStringName, characterSeparator) {
+  getOutgoingNodes = (node) => {
+    let outgoingEdgesAndNodes = node.outgoers()
+    return this.parseOnlyNodes(outgoingEdgesAndNodes)
+  }
+
+  getIncomingNodes = (node) => {
+    let incomingEdgesandNodes = node.incomers()
+    return this.parseOnlyNodes (incomingEdgesandNodes)
+  }
+
+  parseOnlyNodes = (edgesAndNodesCollection) => {
+    let length = edgesAndNodesCollection.length
+    let listOfNodes = []
+    for (let i = 0; i < length; i++) {
+      let nodeId = edgesAndNodesCollection[i].id()
+      let isNode = edgesAndNodesCollection[i].isNode()
+      if (isNode) {
+        listOfNodes.push(nodeId)
+      }
+    }
+    return listOfNodes
+  }
+
+
+  isolateTaskName = (fullStringName, characterSeparator) => {
     let characterIndex = fullStringName.indexOf(characterSeparator)
     return fullStringName.substring(characterIndex + 1)
   }
@@ -84,7 +146,11 @@ class MainGraphView extends Component {
     var simpleVariantDiscovery = 'digraph SimpleVariantDiscovery { compound=true; "call selectIndels" -> "call hardFilterIndel" "call selectSNPs" -> "call hardFilterSNP" "call haplotypeCaller" -> "call selectSNPs" "call hardFilterIndel" -> "call combine" "call haplotypeCaller" -> "call selectIndels" "call hardFilterSNP" -> "call combine" "call selectSNPs" "call haplotypeCaller" "call selectIndels" "call combine" "call hardFilterSNP" "call hardFilterIndel" }'
     var scatterGather = 'digraph scattergather { compound=true; "call analysis" -> "call gather" "call prepare" -> "scatter (prepare.array)" [lhead=cluster_0] "call prepare" "call gather" subgraph cluster_0 { "call analysis" "scatter (prepare.array)" [shape=plaintext] } }'
     var arrays_scatters_if = 'digraph arrays_scatters_ifs { compound=true; subgraph cluster_0 { "call printInt" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
-    var abstractSyntaxTree = parse(scatterGather)
+    var array_io = 'digraph array_io { compound=true; "call mk_file" -> "call concat" "call concat" -> "call count_lines" "call mk_file" -> "call count_lines_array" "call count_lines" subgraph cluster_0 { "call mk_file" "scatter (rs)" [shape=plaintext] } "call count_lines_array" "call concat" "call serialize" }'
+    var arrays_scatters_if_2_task_parallel = 'digraph arrays_scatters_ifs { compound=true; subgraph cluster_0 { "call printOne" "call printTwo" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
+    var arrays_scatters_if_two_series = 'digraph arrays_scatters_ifs { compound=true; "call printOne" -> "call printTwo" subgraph cluster_0 { "call printOne" "call printTwo" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
+
+    var abstractSyntaxTree = parse(arrays_scatters_if)
 
     var childArray = abstractSyntaxTree[0].children
 
@@ -110,7 +176,7 @@ class MainGraphView extends Component {
 
         cy.add([
           { group: 'edges',
-            data: { id: 'edge_from' + fromNodeId + '_to' +
+            data: { id: 'edge_from_' + fromNodeId + '_to_' +
           toNodeId,
             source: fromNodeId,
             target: toNodeId } }
@@ -167,10 +233,10 @@ class MainGraphView extends Component {
     })
 
     cy.layout({
-      name: 'cose'
+      name: 'grid'
     }).run()
 
-    this.updateUIWithLatestApiQuery()
+    this.dynamicallyUpdateUIWithApiQuery()
   }
 
   render () {

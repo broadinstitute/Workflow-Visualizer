@@ -21,7 +21,6 @@ let conf = {
             'shape' : 'circle',
             'background-color': function (ele) {
                 const nodeData = ele.data();
-
                 switch (nodeData.status) {
                     case 'Done':
                         return "#003366";
@@ -29,8 +28,6 @@ let conf = {
                         return "#00b200";
                     case 'Failed':
                         return "#ff0000";
-                    case 'Parent':
-                      return "#D3D3D3"
                     default:
                         return "#bf00ff";
 
@@ -40,7 +37,7 @@ let conf = {
             'text-valign': 'bottom',
             'width': 100,
             'height': 100,
-            'opacity': '0.90' 
+            'opacity': 0.95
           }
       },
       {
@@ -53,6 +50,16 @@ let conf = {
             'source-arrow-color': '#97CAEF',
             'target-arrow-shape': 'triangle'
           }
+      },
+      {
+        selector: 'node:parent',
+        style: {
+          'label': 'data(name)',
+          'border-width' : 2,
+          'border-color' : 'black',
+          'background-color': '#A9A9A9',
+          'background-opacity': 0.222
+        }
       }
   ],
 };
