@@ -39,7 +39,7 @@ class InfoSidebar extends React.Component {
     super(props)
 
     this.state = {
-      currentSelectValue: 'grid'
+      currentSelectValue: 'circle'
     }
     this.changeLayout = this.changeLayout.bind(this)
   }

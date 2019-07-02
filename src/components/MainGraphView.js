@@ -22,6 +22,9 @@ class MainGraphView extends Component {
     this.updateUIWithLatestApiQuery = this.dynamicallyUpdateUIWithApiQuery.bind(this)
     this.parseChildrenTypesToBuildGraph = this.parseChildrenTypesToBuildGraph.bind(this)
     this.makeOrMoveNode = this.makeOrMoveNode.bind(this)
+    this.parseChildArray = this.parseChildArray.bind(this)
+    this.drawDirectedGraph = this.drawDirectedGraph.bind(this)
+    this.distributeParentEdges = this.distributeParentEdges.bind(this)
   }
 
   updateSelectedNode (nodeID) {
@@ -49,7 +52,7 @@ class MainGraphView extends Component {
 
   dynamicallyUpdateUIWithApiQuery () {
     var cy = this.graph.current.getCy()
-    api.fetchMetadata('a66251b8-0721-4ac0-bba7-1ef25a87737c')
+    api.fetchMetadata('9e652fe4-619a-4b7d-b8fc-a2c8bb716fb2')
       .then(function (jsonMetadata) {
         console.log(jsonMetadata)
         this.setState({
@@ -76,38 +79,98 @@ class MainGraphView extends Component {
               // the individual sharded tasks inside the parent.
               const newParentStatus = 'Parent'
               nodeBoi.data('status', newParentStatus)
-
-              let listOfOutgoingNodes = this.getOutgoingNodes(nodeBoi)
-              let listOfIncomingNodes = this.getIncomingNodes(nodeBoi)
+              nodeBoi.data('isScatterParent', true)
 
               currentTaskArray.forEach(function (singleShard) {
                 let shardId = 'shard_' + singleShard.shardIndex + '_of_' + nodeId
-                cy.add([{ group: 'nodes',
-                  data: { id: shardId, name: shardId, parent: nodeId, status: singleShard.executionStatus } }])
-
-                listOfOutgoingNodes.forEach(function (outgoingNeighbor) {
-                  cy.add([{ group: 'edges',
-                    data: { id: 'edge_from_' + shardId + '_to_' + outgoingNeighbor,
-                      source: shardId,
-                      target: outgoingNeighbor } }])
-                })
-
-                listOfIncomingNodes.forEach(function (incomingNeighbor) {
-                  cy.add([{ group: 'edges',
-                  data: { id: 'edge_from_' + incomingNeighbor+ '_to_' + shardId,
-                    source: incomingNeighbor,
-                    target: shardId } }])
-                })
-
-                
-
-
+                let shardNodeObj = cy.getElementById(shardId)
+                let doesShardExist = shardNodeObj.isNode()
+                if (doesShardExist) {
+                  shardNodeObj.data('status', singleShard.executionStatus)
+                } else {
+                  cy.add([{ group: 'nodes',
+                    data: { id: shardId, name: shardId, parent: nodeId, status: singleShard.executionStatus } }])
+                }
               })
+
             }
           }
         }
-      }.bind(this))
+
+        this.distributeParentEdges()
+        this.chooseLayout('circle')
+
+        
+       }.bind(this))
   }
+
+  distributeParentEdges() {
+    let cy = this.graph.current.getCy()
+    let parentCollection = cy.nodes().filter('[status = "Parent"]')
+    for (let i = 0; i < parentCollection.length; i++) {
+      let singleParentNode = parentCollection[i]
+      let childrenOfParent = singleParentNode.children()
+      let nodeId = singleParentNode.id()
+      let listOfOutgoingNodes = this.getOutgoingNodes(singleParentNode)
+      let listOfIncomingNodes = this.getIncomingNodes(singleParentNode)
+
+      listOfOutgoingNodes.forEach(function(outgoingNodeId) {
+        let removedParentEdgeId = `edge_from_${nodeId}_to_${outgoingNodeId}`
+        let removeParentEdgeObj = cy.getElementById(removedParentEdgeId)
+        removeParentEdgeObj.remove()
+        let outgoingNode = cy.getElementById(outgoingNodeId)
+        if (singleParentNode.data('isScatterParent') && outgoingNode.data('isScatterParent')) {
+          //now 
+          for(let n = 0; n < childrenOfParent.length; n++) {
+            let sourceShardId = 'shard_' + n + '_of_' + nodeId
+            let targetShardId = 'shard_' + n + '_of_' + outgoingNodeId
+            cy.add([
+              { group: 'edges',
+                data: { id: 'edge_from_' + sourceShardId + '_to_' +
+              targetShardId,
+                source: sourceShardId,
+                target: targetShardId } }
+            ])
+
+          }
+        } else { //Parent to non-parent
+          for(let m = 0; m < childrenOfParent.length; m++) {
+            let childId = childrenOfParent[m].id()
+            let newEdgeId = 'edge_from_' + childId + '_to_' + outgoingNodeId
+            cy.add([{group: 'edges', data: {id: newEdgeId, source: childId, target: outgoingNodeId}}])
+          }
+        } 
+      })
+
+      listOfIncomingNodes.forEach(function(incomingNodeId) {
+        let removedParentEdgeId = `edge_from_${incomingNodeId}_to_${nodeId}`
+        let removeParentEdgeObj = cy.getElementById(removedParentEdgeId)
+        removeParentEdgeObj.remove()
+        let incomingNode = cy.getElementById(incomingNodeId)
+        if (singleParentNode.data('isScatterParent') && incomingNode.data('isScatterParent')) {
+          for (let n = 0; n < childrenOfParent.length; n++) {
+            let sourceShardId = `shard_${n}_of_${incomingNodeId}`
+            let targetShardId = `shard_${n}_of_${nodeId}`
+            let newShardEdgeId = `edge_from_${sourceShardId}_to_${targetShardId}`
+            cy.add([
+              { group: 'edges',
+                data: { id: newShardEdgeId,
+                source: sourceShardId,
+                target: targetShardId } }
+            ])
+          }
+        } else { //Parent to non-parent
+          for(let m = 0; m < childrenOfParent.length; m++) {
+            let childId = childrenOfParent[m].id()
+            let newEdgeId = `edge_from_${incomingNodeId}_to_${childId}`
+            cy.add([{group: 'edges', data: {id: newEdgeId, source: incomingNodeId, target: childId}}])
+          }
+
+        }
+      })
+    }
+  }
+
 
   getOutgoingNodes = (node) => {
     let outgoingEdgesAndNodes = node.outgoers()
@@ -132,6 +195,25 @@ class MainGraphView extends Component {
     return listOfNodes
   }
 
+  parseOutgoingAndIncomingEdges = (node) => {
+    let incomingEdgesandNodes = node.incomers()
+    let outgoingEdgesAndNodes = node.outgoers()
+    let listOfEdges = []
+    this.parseOnlyEdges(outgoingEdgesAndNodes, listOfEdges)
+    this.parseOnlyEdges(incomingEdgesandNodes, listOfEdges)
+    return listOfEdges
+  }
+
+  parseOnlyEdges = (edgesAndNodes, listOfEdges) => {
+    for (let i = 0; i < edgesAndNodes.length; i++) {
+      let edgeId = edgesAndNodes[i].id()
+      let isEdge = edgesAndNodes[i].isEdge()
+      if (isEdge) {
+        listOfEdges.push(edgeId)
+      }
+    }
+  }
+
 
   isolateTaskName = (fullStringName, characterSeparator) => {
     let characterIndex = fullStringName.indexOf(characterSeparator)
@@ -150,11 +232,138 @@ class MainGraphView extends Component {
     var arrays_scatters_if_2_task_parallel = 'digraph arrays_scatters_ifs { compound=true; subgraph cluster_0 { "call printOne" "call printTwo" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
     var arrays_scatters_if_two_series = 'digraph arrays_scatters_ifs { compound=true; "call printOne" -> "call printTwo" subgraph cluster_0 { "call printOne" "call printTwo" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
 
-    var abstractSyntaxTree = parse(arrays_scatters_if)
+    var abstractSyntaxTree = parse(scatterGather)
 
     var childArray = abstractSyntaxTree[0].children
 
-    this.parseChildrenTypesToBuildGraph(childArray)
+    let graphAndIdToNodeMapObj = this.parseChildArray(childArray, {}, {}, null) 
+    return graphAndIdToNodeMapObj
+  }
+
+  drawDirectedGraph(graphAndIdToNodeMapObj) {
+    let graph = graphAndIdToNodeMapObj.graph
+    let idToNodeMap = graphAndIdToNodeMapObj.idToNodeMap
+    let arrayOfAllNodes = Object.keys(graph)
+
+    let nodesArray = []
+    let edgesArray = []
+
+    arrayOfAllNodes.forEach(function(nodeId) {
+      let nodeName = idToNodeMap[nodeId].name //should try to write the json shit
+      let nodeParent = idToNodeMap[nodeId].directParent
+      let isParent = idToNodeMap[nodeId].isParent
+      let singleNodeJSON
+      if (isParent) {
+        singleNodeJSON = {data: {id: nodeId, name: nodeName, parent: nodeParent, status: 'Parent'}}
+      } else {
+        singleNodeJSON = {data: {id: nodeId, name: nodeName, parent: nodeParent}}
+      }
+      nodesArray.push(singleNodeJSON)
+    })
+
+    arrayOfAllNodes.forEach(function(sourceNodeId) {
+       let targetNodeArray = graph[sourceNodeId]
+       targetNodeArray.forEach(function(targetNodeId) {
+        let edgeName = `edge_from_${sourceNodeId}_to_${targetNodeId}`
+        let singleEdgeJSON = {data: {id: edgeName, source: sourceNodeId, target: targetNodeId}}
+        edgesArray.push(singleEdgeJSON)
+       })
+    })
+
+    let elementsJSONObj = {}
+
+    elementsJSONObj['nodes'] = nodesArray
+    elementsJSONObj['edges'] = edgesArray
+
+    return elementsJSONObj
+
+  }
+
+
+  lookForParentNames = (childArray) => {
+    let parentNameArray = []
+    childArray.forEach(function(child) {
+      if (child.type === 'node_stmt') {
+        let nodeName = child.node_id.id
+        if (nodeName.includes('scatter') || nodeName.includes('if')) {
+          parentNameArray.push(nodeName)
+        }
+      }
+    })
+    return parentNameArray
+  }
+
+
+  parseChildArray(childArray, graphMap, idToNodeObj, parentId) {
+    childArray.forEach(function (child) {
+      if (child.type === 'attr_stmt') {
+
+      } else if (child.type === 'node_stmt') {
+        let nodeName = child.node_id.id
+        let nodeId = this.isolateTaskName(nodeName, ' ')
+
+        this.checkIfNodeIsAdded (graphMap, idToNodeObj , nodeId, nodeName, parentId)
+
+        this.setParent(nodeId, parentId, idToNodeObj)
+
+      } else if (child.type === 'edge_stmt') {
+        let fromNodeName = child.edge_list[0].id
+        let toNodeName = child.edge_list[1].id
+        let fromNodeId = this.isolateTaskName(fromNodeName, ' ')
+        let toNodeId = this.isolateTaskName(toNodeName, ' ')
+
+        this.checkIfNodeIsAdded(graphMap, idToNodeObj, fromNodeId, fromNodeName, parentId)
+        this.setParent(fromNodeId, parentId, idToNodeObj)
+        
+        this.checkIfNodeIsAdded(graphMap, idToNodeObj, toNodeId, toNodeName, parentId)
+        this.setParent(toNodeId, parentId, idToNodeObj)
+
+        graphMap[fromNodeId].push(toNodeId)
+
+      } else if (child.type === 'subgraph') {
+        if (child.id.includes('cluster')) {
+          let parentNameArray = this.lookForParentNames(child.children)
+          let firstParentName = parentNameArray[0]
+          let firstParentId = this.isolateTaskName(firstParentName, ' ')
+
+          this.checkIfNodeIsAdded(graphMap, idToNodeObj, firstParentId, firstParentName, parentId)
+          
+          idToNodeObj[firstParentId].isParent = true
+
+          this.parseChildArray(child.children, graphMap, idToNodeObj, firstParentId)
+        } else {
+          this.parseChildArray(child.children, graphMap, idToNodeObj)
+        }
+      } else {
+        console.warn('Unrecognized dot format')
+      }
+    }.bind(this))
+    let returnGraphAndIdToNodeMap = {graph: graphMap,
+                                     idToNodeMap: idToNodeObj}
+
+    return returnGraphAndIdToNodeMap
+  }
+
+  setParent = (nodeId, parentId, idToNodeObj) => {
+    if (nodeId !== parentId) {
+      idToNodeObj[nodeId].directParent = parentId
+    }
+  }
+
+
+
+  checkIfNodeIsAdded = (graphMap, idToNodeObjMap, potentialNodeId, potentialNodeName, parentId) => {
+    if (!graphMap.hasOwnProperty(potentialNodeId)) {
+      graphMap[potentialNodeId] = []
+      let nodeObj = 
+                  {
+                    id: potentialNodeId,
+                    name: potentialNodeName,
+                    directParent: parentId,
+                    isParent: false
+                  }
+      idToNodeObjMap[potentialNodeId] = nodeObj
+    } 
   }
 
   parseChildrenTypesToBuildGraph (childArray, parentId = null) {
@@ -222,7 +431,8 @@ class MainGraphView extends Component {
   componentDidMount () {
     var cy = this.graph.current.getCy()
 
-    this.readDotFile()
+    this.distributeParentEdges()
+
 
     var thisComponent = this
 
@@ -232,18 +442,25 @@ class MainGraphView extends Component {
       thisComponent.updateSelectedNode(nodeName)
     })
 
+   
+
+
     cy.layout({
-      name: 'grid'
+      name: 'circle'
     }).run()
 
-    this.dynamicallyUpdateUIWithApiQuery()
+
+
   }
 
   render () {
+    let graphAndIdToNodeMapObj = this.readDotFile()
+    let elementsJSON = this.drawDirectedGraph(graphAndIdToNodeMapObj)
+
     return (
 
       <div className='flexbox-container'>
-        <CytoscapeView className="cyto-model" ref={this.graph} elements={[]} />
+        <CytoscapeView className="cyto-model" ref={this.graph} elements={elementsJSON} />
         <DetailedNodeView className="node-view" selectedNode={this.state.tappedNodeName} chooseLayout={this.chooseLayout} metadata={this.state.metadata}/>
       </div>
 

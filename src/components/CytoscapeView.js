@@ -60,6 +60,11 @@ let conf = {
           'background-color': '#A9A9A9',
           'background-opacity': 0.222
         }
+      },
+      {selector: 'node[status="Running"]',
+       style: {
+         'shape' : 'star',
+       }
       }
   ],
 };
