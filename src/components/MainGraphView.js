@@ -4,6 +4,7 @@ import '../MainGraphView.css'
 var DetailedNodeView = require('./InfoSidebar')
 var parse = require('dotparser')
 var api = require('../utils/api')
+var workflowId = '98aaa9fe-0134-4ece-9cca-b1da342f7b7c'
 
 class MainGraphView extends Component {
   constructor (props) {
@@ -25,6 +26,7 @@ class MainGraphView extends Component {
     this.parseChildArray = this.parseChildArray.bind(this)
     this.drawDirectedGraph = this.drawDirectedGraph.bind(this)
     this.distributeParentEdges = this.distributeParentEdges.bind(this)
+    this.onClickScatter = this.onClickScatter.bind(this)
   }
 
   updateSelectedNode (nodeID) {
@@ -52,7 +54,7 @@ class MainGraphView extends Component {
 
   dynamicallyUpdateUIWithApiQuery () {
     var cy = this.graph.current.getCy()
-    api.fetchMetadata('9e652fe4-619a-4b7d-b8fc-a2c8bb716fb2')
+    api.fetchMetadata(workflowId)
       .then(function (jsonMetadata) {
         console.log(jsonMetadata)
         this.setState({
@@ -75,33 +77,99 @@ class MainGraphView extends Component {
               nodeBoi.data('status', executionStatus)
             } else {
               // SCATTER CALL
-              // assumed to be a scatter task. I will convert the current scattered-task into a parent and build
-              // the individual sharded tasks inside the parent.
-              const newParentStatus = 'Parent'
-              nodeBoi.data('status', newParentStatus)
               nodeBoi.data('isScatterParent', true)
 
-              currentTaskArray.forEach(function (singleShard) {
-                let shardId = 'shard_' + singleShard.shardIndex + '_of_' + nodeId
-                let shardNodeObj = cy.getElementById(shardId)
-                let doesShardExist = shardNodeObj.isNode()
-                if (doesShardExist) {
-                  shardNodeObj.data('status', singleShard.executionStatus)
-                } else {
-                  cy.add([{ group: 'nodes',
-                    data: { id: shardId, name: shardId, parent: nodeId, status: singleShard.executionStatus } }])
-                }
-              })
+              if (nodeBoi.data('status') === 'Parent') {
+                currentTaskArray.forEach(function (singleShard) {
+                  let shardId = 'shard_' + singleShard.shardIndex + '_of_' + nodeId
+                  let shardNodeObj = cy.getElementById(shardId)
+                  let doesShardExist = shardNodeObj.isNode()
+                  if (doesShardExist) {
+                    shardNodeObj.data('status', singleShard.executionStatus)
+                  }
+                })
+              } else {
+                let currentStatusOfScatterParent = this.parseOverallShardStatus(currentTaskArray)
+                nodeBoi.data('status', currentStatusOfScatterParent)
+              }
+
+
+
+
+
+
 
             }
           }
+        }        
+       }.bind(this))
+  }
+
+  parseOverallShardStatus = (currentTaskArray) => {
+    let status = null;
+    currentTaskArray.forEach(function(singleShard) {
+      let singleShardExecutionStatus = singleShard.executionStatus
+
+      if (singleShardExecutionStatus === 'Done') {
+        if (status !== 'Running' || status !== 'Failed') {
+          status = singleShardExecutionStatus
+        }
+      } else if (singleShardExecutionStatus === 'Running') {
+        if (status !== 'Failed') {
+          status = singleShardExecutionStatus
+        }
+      } else if (singleShardExecutionStatus === 'Failed') {
+        status = singleShardExecutionStatus
+      }
+    })
+    return status
+  }
+
+
+
+  onClickScatter(scatterParentNodeId) {
+    var cy = this.graph.current.getCy()
+    api.fetchMetadata(workflowId)
+      .then(function (jsonMetadata) {
+        console.log(jsonMetadata)
+        this.setState({
+          metadata: jsonMetadata
+        })
+
+        let currentTaskArray = this.findNodeMetadata(scatterParentNodeId, jsonMetadata)
+        if (currentTaskArray === null) {
+          console.log(scatterParentNodeId + ' was not found in the metadata')
+        } else {
+
+          const newParentStatus = 'Parent'
+          let scatterParentNode = cy.getElementById(scatterParentNodeId)
+          scatterParentNode.data('status', newParentStatus)
+
+          currentTaskArray.forEach(function (singleShard) {
+            let shardId = 'shard_' + singleShard.shardIndex + '_of_' + scatterParentNodeId
+            cy.add([{ group: 'nodes',
+            data: { id: shardId, name: shardId, parent: scatterParentNodeId, status: singleShard.executionStatus } }])
+          })
+
         }
 
         this.distributeParentEdges()
         this.chooseLayout('circle')
-
-        
        }.bind(this))
+
+  }
+
+  findNodeMetadata = (scatterParentNode, metadata) => {
+    let calls = metadata.data.calls
+    for (let singleCall in calls) {
+      if (calls.hasOwnProperty(singleCall)) {
+        let nodeId = this.isolateTaskName(singleCall, '.')
+        if (nodeId === scatterParentNode) {
+          return calls[singleCall]
+        }
+      }
+    }
+    return null
   }
 
   distributeParentEdges() {
@@ -119,7 +187,7 @@ class MainGraphView extends Component {
         let removeParentEdgeObj = cy.getElementById(removedParentEdgeId)
         removeParentEdgeObj.remove()
         let outgoingNode = cy.getElementById(outgoingNodeId)
-        if (singleParentNode.data('isScatterParent') && outgoingNode.data('isScatterParent')) {
+        if (singleParentNode.data('isScatterParent') && outgoingNode.data('isScatterParent') && singleParentNode.data('status') === 'Parent' && outgoingNode.data('status') === 'Parent') {
           //now 
           for(let n = 0; n < childrenOfParent.length; n++) {
             let sourceShardId = 'shard_' + n + '_of_' + nodeId
@@ -232,7 +300,7 @@ class MainGraphView extends Component {
     var arrays_scatters_if_2_task_parallel = 'digraph arrays_scatters_ifs { compound=true; subgraph cluster_0 { "call printOne" "call printTwo" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
     var arrays_scatters_if_two_series = 'digraph arrays_scatters_ifs { compound=true; "call printOne" -> "call printTwo" subgraph cluster_0 { "call printOne" "call printTwo" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
 
-    var abstractSyntaxTree = parse(scatterGather)
+    var abstractSyntaxTree = parse(arrays_scatters_if_two_series)
 
     var childArray = abstractSyntaxTree[0].children
 
@@ -440,6 +508,13 @@ class MainGraphView extends Component {
       var node = evt.target
       var nodeName = node.data('name')
       thisComponent.updateSelectedNode(nodeName)
+    })
+
+    cy.on('cxttapend', 'node[?isScatterParent]', function(evt) {
+      let node = evt.target
+      let nodeId = node.id()
+      thisComponent.onClickScatter(nodeId)
+
     })
 
    

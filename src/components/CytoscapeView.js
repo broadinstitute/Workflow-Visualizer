@@ -61,7 +61,7 @@ let conf = {
           'background-opacity': 0.222
         }
       },
-      {selector: 'node[status="Running"]',
+      {selector: 'node[?isScatterParent]',
        style: {
          'shape' : 'star',
        }
