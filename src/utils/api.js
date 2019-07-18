@@ -1,11 +1,21 @@
-var axios = require('axios')
+import * as axios from "axios"
 
-module.exports = {
-  fetchMetadata: function (workflowID) {
-    var encodedURI = window.encodeURI('/api/workflows/v1/' + workflowID + '/metadata?expandSubWorkflows=true')
-    return axios.get(encodedURI)
-      .then(function (response) {
-        return response
-      })
-  }
+export const fetchMetadata = workflowID => {
+  var encodedURI = window.encodeURI(
+    "/api/workflows/v1/" + workflowID + "/metadata?expandSubWorkflows=true"
+  )
+
+  return axios.get(encodedURI).then(function(response) {
+    return response
+  })
+}
+
+export const queryWorkflows = () => {
+  const uriEndpoint = window.encodeURI(
+    "/api/workflows/v1/query?includeSubworkflows=false"
+  )
+
+  return axios.get(uriEndpoint).then(response => {
+    return response
+  })
 }

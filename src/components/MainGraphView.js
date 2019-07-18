@@ -1,100 +1,50 @@
 import React, { Component } from "react"
 import CytoscapeView from "./CytoscapeView"
 import "../MainGraphView.css"
-var DetailedNodeView = require("./InfoSidebar")
-var parse = require("dotparser")
-var api = require("../utils/api")
-let three_series = "5dac04f3-fbdb-46c0-98fb-68106c80ad49"
-let aliased_subs = "480da97b-559a-4df2-9374-083e70dcb6a0"
-let workflowIdMetadata = "e014bc68-5fc0-430e-96a1-2261f6549847"
+import * as dotFiles from "../utils/dotFiles"
+import DetailedNodeView from "./InfoSidebar"
+import * as dotparser from "dotparser"
+import * as api from "../utils/api"
+import {
+  readDotString,
+  parseChildArray
+} from "../utils/dotStringParsingFunctions"
 
-let simpleVariantDiscovery =
-  'digraph SimpleVariantDiscovery { compound=true; "call selectIndels" -> "call hardFilterIndel" "call selectSNPs" -> "call hardFilterSNP" "call haplotypeCaller" -> "call selectSNPs" "call hardFilterIndel" -> "call combine" "call haplotypeCaller" -> "call selectIndels" "call hardFilterSNP" -> "call combine" "call selectSNPs" "call haplotypeCaller" "call selectIndels" "call combine" "call hardFilterSNP" "call hardFilterIndel" }'
-let scatterGather =
-  'digraph scattergather { compound=true; "call analysis" -> "call gather" "call prepare" -> "scatter (prepare.array)" [lhead=cluster_0] "call prepare" "call gather" subgraph cluster_0 { "call analysis" "scatter (prepare.array)" [shape=plaintext] } }'
-let arrays_scatters_if =
-  'digraph arrays_scatters_ifs { compound=true; subgraph cluster_0 { "call printInt" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
-let array_io =
-  'digraph array_io { compound=true; "call mk_file" -> "call concat" "call concat" -> "call count_lines" "call mk_file" -> "call count_lines_array" "call count_lines" subgraph cluster_0 { "call mk_file" "scatter (rs)" [shape=plaintext] } "call count_lines_array" "call concat" "call serialize" }'
-let arrays_scatters_if_2_task_parallel =
-  'digraph arrays_scatters_ifs { compound=true; subgraph cluster_0 { "call printOne" "call printTwo" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
-let arrays_scatters_if_two_series =
-  'digraph arrays_scatters_ifs { compound=true; "call printOne" -> "call printTwo" subgraph cluster_0 { "call printOne" "call printTwo" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
-let arrays_scatters_if_three_series =
-  'digraph arrays_scatters_ifs { compound=true; "call printOne" -> "call printTwo" "call printTwo" -> "call printThree" subgraph cluster_0 { "call printOne" "call printTwo" "call printThree" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
-let aliased_subworkflows =
-  'digraph aliased_subworkflows { compound=true; "call subwfT" -> "Array[Int] fs" "Array[Int] fs" -> "call subwfF" "call subwfT" "Array[Int] fs" "call subwfF" }'
-let subworkflow =
-  'digraph subwf { compound=true; subgraph cluster_0 { "call increment" "scatter (is)" [shape=plaintext] } }'
-let arrays_scatter_series_and_parallel =
-  'digraph arrays_scatters_ifs { compound=true; "call printTwo" -> "call printThree" subgraph cluster_0 { "call printOne" "call printTwo" "call printThree" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
-let two_imports =
-  'digraph aliased_subworkflows { compound=true; "call subwfT" -> "Array[Int] fs" "Array[Int] fs" -> "call subwfF" "call subwfT" "Array[Int] fs" "call subwfF" "call sg" }'
-let three_imports_sub_scatter =
-  'digraph three_imports_sub_scatter { compound=true; "call scatThree" -> "Array[Int] ts" "Array[Int] ts" -> "call subwfT" "Array[Int] fs" -> "call subwfF" "call subwfT" -> "Array[Int] fs" "call subwfF" "call scatThree" "call sg" "Array[Int] fs" "call subwfT" "Array[Int] ts" }'
-let arrays_scatter_three_series_gather =
-  'digraph arrays_scatter_three_series_gather { compound=true; "call printThree" -> "call gather" "call printOne" -> "call printTwo" "call printTwo" -> "call printThree" "call gather" subgraph cluster_0 { "call printOne" "call printTwo" "call printThree" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
-let sub1 =
-  'digraph sub1 { compound=true; "call increment" -> "call subN2" "call subN2" subgraph cluster_0 { "call increment" "scatter (is)" [shape=plaintext] } }'
-let nested_subworkflows_4 =
-  'digraph nested_subworkflows_4 { compound=true; "call subN1" }'
-let sub2 =
-  'digraph sub2 { compound=true; "call increment" -> "call subN3" "call subN3" subgraph cluster_0 { "call increment" "scatter (it)" [shape=plaintext] } }'
-let sub3 =
-  'digraph sub3 { compound=true; subgraph cluster_0 { "call increment" "scatter (iu)" [shape=plaintext] } }'
-let nested_subworkflows_3 =
-  'digraph nested_subworkflows_3 { compound=true; "call subN2" }'
+let workflowIdMetadata
 
-let currentDotFile = arrays_scatter_three_series_gather
+let currentDotFile = dotFiles.nested_subworkflows_4
 
 class MainGraphView extends Component {
   constructor(props) {
     super(props)
     this.state = {
-      tappedNodeName: "",
+      currentSelectedNodeData: null,
       metadata: null
     }
 
     this.graph = React.createRef()
 
-    this.readDotFile = this.readDotFile.bind(this)
-    this.updateSelectedNode = this.updateSelectedNode.bind(this)
+    this.updateSelectedNodeData = this.updateSelectedNodeData.bind(this)
     this.chooseLayout = this.chooseLayout.bind(this)
     this.changeLayout = this.changeLayout.bind(this)
-    this.updateUIWithLatestApiQuery = this.dynamicallyUpdateUIWithApiQuery.bind(
-      this
-    )
+    this.updateUIWithMetadata = this.updateUIWithMetadata.bind(this)
 
-    this.parseChildArray = this.parseChildArray.bind(this)
     this.drawDirectedGraph = this.drawDirectedGraph.bind(this)
     this.distributeParentEdges = this.distributeParentEdges.bind(this)
     this.onClickScatter = this.onClickScatter.bind(this)
   }
 
-  updateSelectedNode(nodeID) {
+  updateSelectedNodeData(nodeData) {
+    let nodeDataString = JSON.stringify(nodeData)
     this.setState({
-      tappedNodeName: nodeID
+      currentSelectedNodeData: nodeDataString
     })
 
     // Update UI whenever we click on a node
-    this.dynamicallyUpdateUIWithApiQuery()
+    this.updateUIWithMetadata()
   }
 
-  // Many more options for layouts that are specific per layout type e.g cose, breadthfirst. Something to add later?
-  changeLayout(layoutType) {
-    let cy = this.graph.current.getCy()
-    cy.layout({
-      name: layoutType,
-      fit: true,
-      animate: true,
-      animationDuration: 500,
-      animationEasing: undefined,
-      refresh: 20,
-      animationThreshold: 250
-    }).run()
-  }
-
-  dynamicallyUpdateUIWithApiQuery() {
+  updateUIWithMetadata() {
     api.fetchMetadata(workflowIdMetadata).then(jsonMetadata => {
       this.setState({
         metadata: jsonMetadata
@@ -105,173 +55,215 @@ class MainGraphView extends Component {
     })
   }
 
+  expandSubworkflow = nodeId => {
+    let cy = this.graph.current.getCy()
+    let node = cy.getElementById(nodeId)
+
+    if (node.data("type") !== "parent") {
+      api.fetchMetadata(workflowIdMetadata).then(jsonMetadata => {
+        this.setState({
+          metadata: jsonMetadata
+        })
+
+        node.data("type", "parent")
+
+        //this chunk should probably get its own method later, but I'm lazy rn.
+        //we are going to isolate for everything prior to the . to get the actual name of the workflow
+        //also this I realize only works if they "as 'name x'"" is the same as the actual workflow file name.
+        //Otherwise, this will not work at all.
+
+        //CALLABLE NAME IS ACTAULLY A ROBUST WAY. WE JUST NEED TO LOOK AT IMPORTS OF METADATA
+        //to match to actual file name!!!!
+        let subworkflowName = node.data("callableName")
+        let indexSplit = subworkflowName.indexOf(".")
+        let substring = subworkflowName.substring(0, indexSplit)
+        //this variable will be called via some metadata call.
+        let currentSubworkflowDotString = dotFiles[substring]
+
+        let abstractSyntaxTree = dotparser(currentSubworkflowDotString)
+        let childArray = abstractSyntaxTree[0].children
+
+        let subworkflowId = nodeId //since this is a subworkflow, the workflowId in parseChildArray in fact is this node.
+
+        let graphAndIdToNodeMapObj = parseChildArray(
+          childArray,
+          {},
+          {},
+          nodeId,
+          subworkflowId
+        )
+
+        let subworkflowJSON = this.drawDirectedGraph(graphAndIdToNodeMapObj)
+        cy.add(subworkflowJSON)
+      })
+    }
+    this.updateSelectedNodeData(node.data())
+  }
+
+  /**
+   * Built to help find subworkflow nodes whose id is not just the call itself but instead
+   * includes the name of the subworkflow itself AKA subworkflowParent
+   *  */
+
+  computeNodeIdFromMetadata = (subworkflowParent, singleCall) => {
+    let returnNodeId
+    if (subworkflowParent === null) {
+      returnNodeId = singleCall
+    } else {
+      let isolatedNodeId = this.isolateTaskName(singleCall, ".")
+      returnNodeId = `${subworkflowParent}.${isolatedNodeId}`
+    }
+
+    return returnNodeId
+  }
+
+  parseOverallShardStatus = currentTaskArray => {
+    //wordValueDict is how we rank statuses. Failure is more important, hence should be display
+    //over all others when unscattered and so on.
+    return currentTaskArray.reduce((summarizedStatus, singleShard) => {
+      let wordValueDict = { Done: 1, Running: 2, Failed: 3 }
+      return wordValueDict[singleShard.executionStatus] >
+        wordValueDict[summarizedStatus]
+        ? singleShard.executionStatus
+        : summarizedStatus
+    }, "Done")
+  }
+
+  handleSingleNodeTask = (currentTaskArray, nodeBoi) => {
+    let executionStatus = currentTaskArray[0].executionStatus
+    nodeBoi.data("status", executionStatus)
+
+    if (currentTaskArray[0].hasOwnProperty("subWorkflowMetadata")) {
+      let subWorkflowMetadata = currentTaskArray[0].subWorkflowMetadata
+      if (nodeBoi.data("type") === "parent") {
+        this.parseMetadata(subWorkflowMetadata, nodeBoi.id())
+      }
+
+      nodeBoi.data("parentType", "subworkflow")
+    }
+  }
+
+  handleMultiNodeTask = (currentTaskArray, nodeBoi) => {
+    let cy = this.graph.current.getCy()
+    nodeBoi.data("parentType", "scatterParent")
+    let nodeId = nodeBoi.id()
+
+    if (nodeBoi.data("type") === "parent") {
+      currentTaskArray.forEach(function(singleShard) {
+        let shardId = "shard_" + singleShard.shardIndex + "_of_" + nodeId
+        let shardNodeObj = cy.getElementById(shardId)
+        let doesShardExist = shardNodeObj.isNode()
+        if (doesShardExist) {
+          shardNodeObj.data("status", singleShard.executionStatus)
+        }
+      })
+    } else {
+      let currentStatusOfScatterParent = this.parseOverallShardStatus(
+        currentTaskArray
+      )
+      nodeBoi.data("status", currentStatusOfScatterParent)
+    }
+  }
+
   parseMetadata = (dataFieldOfjsonMetadata, subworkflowParent) => {
     let cy = this.graph.current.getCy()
     let calls = dataFieldOfjsonMetadata.calls
 
     for (let singleCall in calls) {
       if (calls.hasOwnProperty(singleCall)) {
-        let nodeId
-        if (subworkflowParent === null) {
-          nodeId = singleCall
-        } else {
-          let isolatedNodeId = this.isolateTaskName(singleCall, ".")
-          nodeId = `${subworkflowParent}.${isolatedNodeId}`
-        }
+        let nodeId = this.computeNodeIdFromMetadata(
+          subworkflowParent,
+          singleCall
+        )
         let nodeBoi = cy.getElementById(nodeId)
         let currentTaskArray = calls[singleCall]
 
         if (currentTaskArray.length === 0) {
           console.log("Task of length 0 observed. Nothing was done with it")
         } else if (currentTaskArray.length === 1) {
-          // single tasks, so the status should just be updated
-          let executionStatus = currentTaskArray[0].executionStatus
-          nodeBoi.data("status", executionStatus)
-
-          if (currentTaskArray[0].hasOwnProperty("subWorkflowMetadata")) {
-            let subWorkflowMetadata = currentTaskArray[0].subWorkflowMetadata
-            if (nodeBoi.data("type") === "parent") {
-              //then we should update the color of the subgraph including all the children
-              //ya what does that even mean FAM
-              this.parseMetadata(subWorkflowMetadata, nodeId)
-            }
-
-            nodeBoi.data("parentType", "subworkflow")
-          }
+          this.handleSingleNodeTask(currentTaskArray, nodeBoi)
         } else {
-          // SCATTER CALL
-          nodeBoi.data("parentType", "scatterParent")
-
-          if (nodeBoi.data("type") === "parent") {
-            currentTaskArray.forEach(function(singleShard) {
-              let shardId = "shard_" + singleShard.shardIndex + "_of_" + nodeId
-              let shardNodeObj = cy.getElementById(shardId)
-              let doesShardExist = shardNodeObj.isNode()
-              if (doesShardExist) {
-                shardNodeObj.data("status", singleShard.executionStatus)
-              }
-            })
-          } else {
-            let currentStatusOfScatterParent = this.parseOverallShardStatus(
-              currentTaskArray
-            )
-            nodeBoi.data("status", currentStatusOfScatterParent)
-          }
+          this.handleMultiNodeTask(currentTaskArray, nodeBoi)
         }
       }
     }
   }
 
-  parseOverallShardStatus = currentTaskArray => {
-    let status = null
-    currentTaskArray.forEach(function(singleShard) {
-      let singleShardExecutionStatus = singleShard.executionStatus
-
-      if (singleShardExecutionStatus === "Done") {
-        if (status !== "Running" || status !== "Failed") {
-          status = singleShardExecutionStatus
-        }
-      } else if (singleShardExecutionStatus === "Running") {
-        if (status !== "Failed") {
-          status = singleShardExecutionStatus
-        }
-      } else if (singleShardExecutionStatus === "Failed") {
-        status = singleShardExecutionStatus
-      }
-    })
-    return status
-  }
-
-  unscatter = selectedNodeId => {
+  mapOutgoingChildEdgesToParentNode = (descendantsCollection, parentNodeId) => {
     let cy = this.graph.current.getCy()
-    let selectedNode = cy.getElementById(selectedNodeId)
-    let descendantsCollection = selectedNode.descendants()
     let outgoingNeighborsOfDescendants = descendantsCollection
       .outgoers()
       .filter("node")
-    let incomingNeighborsOfDescendants = descendantsCollection
-      .incomers()
-      .filter("node")
+
     let unscatterOutgoingNeighbors = outgoingNeighborsOfDescendants.difference(
       descendantsCollection
     )
-    let unscatterIncomingNeighbors = incomingNeighborsOfDescendants.difference(
-      descendantsCollection
-    )
-    cy.batch(function() {
+
+    cy.batch(() => {
       unscatterOutgoingNeighbors.forEach(outgoingNode => {
         let outgoingNodeId = outgoingNode.id()
-        let edgeId = `edge_from_${selectedNodeId}_to_${outgoingNodeId}`
+        let edgeId = `edge_from_${parentNodeId}_to_${outgoingNodeId}`
         cy.add([
           {
             group: "edges",
             data: {
               id: edgeId,
-              source: selectedNodeId,
+              source: parentNodeId,
               target: outgoingNodeId
             }
           }
         ])
       })
+    })
+  }
 
+  mapIncomingChildEdgesToParentNode = (descendantsCollection, parentNodeId) => {
+    let cy = this.graph.current.getCy()
+    let incomingNeighborsOfDescendants = descendantsCollection
+      .incomers()
+      .filter("node")
+
+    let unscatterIncomingNeighbors = incomingNeighborsOfDescendants.difference(
+      descendantsCollection
+    )
+
+    cy.batch(() => {
       unscatterIncomingNeighbors.forEach(incomingNode => {
         let incomingNodeId = incomingNode.id()
-        let edgeId = `edge_from_${incomingNodeId}_to_${selectedNodeId}`
+        let edgeId = `edge_from_${incomingNodeId}_to_${parentNodeId}`
         cy.add([
           {
             group: "edges",
             data: {
               id: edgeId,
               source: incomingNodeId,
-              target: selectedNodeId
+              target: parentNodeId
             }
           }
         ])
       })
     })
-
-    descendantsCollection.remove()
   }
 
-  onClickScatter(scatterParentNodeId) {
+  mapChildEdgesBackToParentNode = (descendantsCollection, parentNodeId) => {
+    this.mapOutgoingChildEdgesToParentNode(descendantsCollection, parentNodeId)
+    this.mapIncomingChildEdgesToParentNode(descendantsCollection, parentNodeId)
+  }
+
+  unscatter = selectedParentNodeId => {
     let cy = this.graph.current.getCy()
-    api.fetchMetadata(workflowIdMetadata).then(jsonMetadata => {
-      this.setState({
-        metadata: jsonMetadata
-      })
+    let parentNode = cy.getElementById(selectedParentNodeId)
+    let descendantsCollection = parentNode.descendants()
 
-      let currentTaskArray = this.findNodeMetadata(
-        scatterParentNodeId,
-        jsonMetadata.data,
-        true
-      )
-      if (currentTaskArray === null) {
-        console.log(scatterParentNodeId + " was not found in the metadata")
-      } else {
-        let scatterParentNode = cy.getElementById(scatterParentNodeId)
-        scatterParentNode.data("type", "parent")
-
-        currentTaskArray.forEach(function(singleShard) {
-          let shardId =
-            "shard_" + singleShard.shardIndex + "_of_" + scatterParentNodeId
-          cy.add([
-            {
-              group: "nodes",
-              data: {
-                id: shardId,
-                name: shardId,
-                type: "shard",
-                shardIndex: singleShard.shardIndex,
-                parent: scatterParentNodeId,
-                status: singleShard.executionStatus
-              }
-            }
-          ])
-        })
-      }
-      this.distributeParentEdges()
-      this.chooseLayout("circle")
-    })
+    this.mapChildEdgesBackToParentNode(
+      descendantsCollection,
+      selectedParentNodeId
+    )
+    //by removing descendants after remapping nodes, we will remove all descendent nodes and edges which makes sense
+    //after remapping descendent edges/connections back to parent.
+    descendantsCollection.remove()
+    this.updateSelectedNodeData(parentNode.data())
+    this.distributeParentEdges()
   }
 
   findNodeMetadata = (
@@ -290,12 +282,9 @@ class MainGraphView extends Component {
 
       for (let singleCall in calls) {
         if (calls.hasOwnProperty(singleCall)) {
-          let prefixString
-          if (isFirstCall) {
-            prefixString = singleCall
-          } else {
-            prefixString = this.isolateTaskName(singleCall, ".")
-          }
+          let prefixString = isFirstCall
+            ? singleCall
+            : this.isolateTaskName(singleCall, ".")
 
           let lengthOfPrefixString = prefixString.length
           let scatterParentNodeIdSubstring = scatterParentNodeId.substring(
@@ -331,6 +320,47 @@ class MainGraphView extends Component {
 
       return null
     }
+  }
+
+  onClickScatter(scatterParentNodeId) {
+    let cy = this.graph.current.getCy()
+    api.fetchMetadata(workflowIdMetadata).then(jsonMetadata => {
+      this.setState({
+        metadata: jsonMetadata
+      })
+
+      let currentTaskArray = this.findNodeMetadata(
+        scatterParentNodeId,
+        jsonMetadata.data,
+        true
+      )
+      if (currentTaskArray === null) {
+        console.log(scatterParentNodeId + " was not found in the metadata")
+      } else {
+        let scatterParentNode = cy.getElementById(scatterParentNodeId)
+        scatterParentNode.data("type", "parent")
+
+        currentTaskArray.forEach(function(singleShard) {
+          let shardId = `shard_${singleShard.shardIndex}_of_${scatterParentNodeId}`
+          let shardName = `shard_${singleShard.shardIndex}`
+          cy.add([
+            {
+              group: "nodes",
+              data: {
+                id: shardId,
+                name: shardName,
+                type: "shard",
+                shardIndex: singleShard.shardIndex,
+                parent: scatterParentNodeId,
+                status: singleShard.executionStatus
+              }
+            }
+          ])
+        })
+      }
+      this.distributeParentEdges()
+      this.chooseLayout("circle")
+    })
   }
 
   removeSingleEdge = edgeId => {
@@ -467,21 +497,6 @@ class MainGraphView extends Component {
     return fullStringName.substring(characterIndex + 1)
   }
 
-  readDotFile() {
-    let abstractSyntaxTree = parse(currentDotFile)
-    let workflowId = abstractSyntaxTree[0].id
-    let childArray = abstractSyntaxTree[0].children
-
-    let graphAndIdToNodeMapObj = this.parseChildArray(
-      childArray,
-      {},
-      {},
-      null,
-      workflowId
-    )
-    return graphAndIdToNodeMapObj
-  }
-
   drawDirectedGraph(graphAndIdToNodeMapObj) {
     let graph = graphAndIdToNodeMapObj.graph
     let idToNodeMap = graphAndIdToNodeMapObj.idToNodeMap
@@ -503,13 +518,15 @@ class MainGraphView extends Component {
       let nodeParent = idToNodeMap[nodeId].directParent
       let isParent = idToNodeMap[nodeId].isParent
       let singleNodeJSON
+      let callable = idToNodeMap[nodeId].callableName
       if (isParent) {
         singleNodeJSON = {
           data: {
             id: nodeId,
             name: nodeName,
             parent: nodeParent,
-            type: "parent"
+            type: "parent",
+            callableName: callable
           }
         }
       } else {
@@ -518,7 +535,8 @@ class MainGraphView extends Component {
             id: nodeId,
             name: nodeName,
             parent: nodeParent,
-            type: "single-task"
+            type: "single-task",
+            callableName: callable
           }
         }
       }
@@ -542,137 +560,18 @@ class MainGraphView extends Component {
     return edgesArray
   }
 
-  lookForParentNames = childArray => {
-    let parentNameArray = []
-    childArray.forEach(function(child) {
-      if (child.type === "node_stmt") {
-        let nodeName = child.node_id.id
-        if (nodeName.includes("scatter") || nodeName.includes("if")) {
-          parentNameArray.push(nodeName)
-        }
-      }
-    })
-    return parentNameArray
-  }
-
-  parseChildArray(childArray, graphMap, idToNodeObj, parentId, workflowId) {
-    childArray.forEach(
-      function(child) {
-        if (child.type === "attr_stmt") {
-        } else if (child.type === "node_stmt") {
-          let nodeName = child.node_id.id
-          let isolatedNodeName = this.isolateTaskName(nodeName, " ")
-          let nodeId = `${workflowId}.${isolatedNodeName}`
-
-          this.checkIfNodeIsAdded(
-            graphMap,
-            idToNodeObj,
-            nodeId,
-            nodeName,
-            parentId
-          )
-
-          this.setParent(nodeId, parentId, idToNodeObj)
-        } else if (child.type === "edge_stmt") {
-          let fromNodeName = child.edge_list[0].id
-          let isolatedFromNodeName = this.isolateTaskName(fromNodeName, " ")
-          let fromNodeId = `${workflowId}.${isolatedFromNodeName}`
-
-          let toNodeName = child.edge_list[1].id
-          let isolatedToNodeName = this.isolateTaskName(toNodeName, " ")
-          let toNodeId = `${workflowId}.${isolatedToNodeName}`
-
-          this.checkIfNodeIsAdded(
-            graphMap,
-            idToNodeObj,
-            fromNodeId,
-            fromNodeName,
-            parentId
-          )
-          this.setParent(fromNodeId, parentId, idToNodeObj)
-
-          this.checkIfNodeIsAdded(
-            graphMap,
-            idToNodeObj,
-            toNodeId,
-            toNodeName,
-            parentId
-          )
-          this.setParent(toNodeId, parentId, idToNodeObj)
-
-          graphMap[fromNodeId].push(toNodeId)
-        } else if (child.type === "subgraph") {
-          if (child.id.includes("cluster")) {
-            let parentNameArray = this.lookForParentNames(child.children)
-            let firstParentName = parentNameArray[0]
-            let isolatefirstParentName = this.isolateTaskName(
-              firstParentName,
-              " "
-            )
-            let firstParentId = `${workflowId}.${isolatefirstParentName}`
-
-            this.checkIfNodeIsAdded(
-              graphMap,
-              idToNodeObj,
-              firstParentId,
-              firstParentName,
-              parentId
-            )
-
-            idToNodeObj[firstParentId].isParent = true
-
-            this.parseChildArray(
-              child.children,
-              graphMap,
-              idToNodeObj,
-              firstParentId,
-              workflowId
-            )
-          } else {
-            this.parseChildArray(
-              child.children,
-              graphMap,
-              idToNodeObj,
-              parentId,
-              workflowId
-            )
-          }
-        } else {
-          console.warn("Unrecognized dot format")
-        }
-      }.bind(this)
-    )
-    let returnGraphAndIdToNodeMap = {
-      graph: graphMap,
-      idToNodeMap: idToNodeObj
-    }
-
-    return returnGraphAndIdToNodeMap
-  }
-
-  setParent = (nodeId, parentId, idToNodeObj) => {
-    if (nodeId !== parentId) {
-      idToNodeObj[nodeId].directParent = parentId
-    }
-  }
-
-  checkIfNodeIsAdded = (
-    graphMap,
-    idToNodeObjMap,
-    potentialNodeId,
-    potentialNodeName,
-    parentId
-  ) => {
-    if (!graphMap.hasOwnProperty(potentialNodeId)) {
-      graphMap[potentialNodeId] = []
-      let nodeObj = {
-        id: potentialNodeId,
-        name: potentialNodeName,
-        directParent: parentId,
-        isParent: false
-      }
-      idToNodeObjMap[potentialNodeId] = nodeObj
-    }
+  // Many more options for layouts that are specific per layout type e.g cose, breadthfirst. Something to add later?
+  changeLayout(layoutType) {
+    let cy = this.graph.current.getCy()
+    cy.layout({
+      name: layoutType,
+      fit: true,
+      animate: true,
+      animationDuration: 500,
+      animationEasing: undefined,
+      refresh: 20,
+      animationThreshold: 250
+    }).run()
   }
 
   chooseLayout(text) {
@@ -696,8 +595,8 @@ class MainGraphView extends Component {
 
     cy.on("tapend", "node", evt => {
       let node = evt.target
-      let nodeName = node.data("name")
-      this.updateSelectedNode(nodeName)
+      let nodeData = node.data()
+      this.updateSelectedNodeData(nodeData)
     })
 
     cy.on("cxttapend", "node[parentType = 'scatterParent']", evt => {
@@ -709,43 +608,15 @@ class MainGraphView extends Component {
       } else {
         node.data("type", "single-task")
         this.unscatter(nodeId)
-        this.distributeParentEdges()
       }
     })
 
     //I do an api call to try to simulate the delay that an actual call would cause. The code is
     // a little hacky as a result.
     cy.on("cxttapend", 'node[parentType = "subworkflow"]', evt => {
-      let cy = this.graph.current.getCy()
       let node = evt.target
       let nodeId = node.id()
-      if (node.data("type") !== "parent") {
-        api.fetchMetadata(workflowIdMetadata).then(jsonMetadata => {
-          this.setState({
-            metadata: jsonMetadata
-          })
-
-          node.data("type", "parent")
-
-          let subworkflow =
-            'digraph subwf { compound=true; subgraph cluster_0 { "call increment" "scatter (is)" [shape=plaintext] } }'
-
-          let abstractSyntaxTree = parse(subworkflow)
-          let childArray = abstractSyntaxTree[0].children
-          let subworkflowId = nodeId
-
-          let graphAndIdToNodeMapObj = this.parseChildArray(
-            childArray,
-            {},
-            {},
-            nodeId,
-            subworkflowId
-          )
-
-          let subworkflowJSON = this.drawDirectedGraph(graphAndIdToNodeMapObj)
-          cy.add(subworkflowJSON)
-        })
-      }
+      this.expandSubworkflow(nodeId)
     })
 
     cy.layout({
@@ -753,9 +624,17 @@ class MainGraphView extends Component {
     }).run()
   }
 
+  updateToLatestWorkflowId = () => {
+    api.queryWorkflows().then(response => {
+      const id = response.data.results[0].id
+      workflowIdMetadata = id
+    })
+  }
+
   render() {
-    let graphAndIdToNodeMapObj = this.readDotFile()
+    let graphAndIdToNodeMapObj = readDotString(currentDotFile)
     let elementsJSON = this.drawDirectedGraph(graphAndIdToNodeMapObj)
+    this.updateToLatestWorkflowId()
 
     return (
       <div className="flexbox-container">
@@ -766,7 +645,7 @@ class MainGraphView extends Component {
         />
         <DetailedNodeView
           className="node-view"
-          selectedNode={this.state.tappedNodeName}
+          currentSelectedNodeData={this.state.currentSelectedNodeData}
           chooseLayout={this.chooseLayout}
           metadata={this.state.metadata}
         />

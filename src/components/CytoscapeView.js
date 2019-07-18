@@ -1,6 +1,5 @@
 import React, { Component } from "react"
 import cytoscape from "cytoscape"
-// import { SSL_OP_SINGLE_DH_USE } from 'constants';
 
 let cyStyle = {
   height: "800px",
@@ -22,7 +21,7 @@ let conf = {
           const nodeData = ele.data()
           switch (nodeData.status) {
             case "Done":
-              return "#003366"
+              return "#000000"
             case "Running":
               return "#00b200"
             case "Failed":
@@ -53,7 +52,7 @@ let conf = {
       selector: "node:parent",
       style: {
         label: "data(name)",
-        "border-width": 2,
+        "border-width": 0.5,
         "border-color": "black",
         "background-color": "#A9A9A9",
         "background-opacity": 0.222

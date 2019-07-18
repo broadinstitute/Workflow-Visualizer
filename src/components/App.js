@@ -1,18 +1,15 @@
-import React from 'react'
-import '../App.css'
+import React from "react"
 // import Parent from './Parent'
 // import ParentV2 from './ParentV2'
-import MainGraphView from './MainGraphView'
+import MainGraphView from "./MainGraphView"
 
 class App extends React.Component {
-  constructor (props) {
+  constructor(props) {
     super(props)
-    this.state = {
-
-    }
+    this.state = {}
   }
 
-  render () {
+  render() {
     return (
       <div className="App">
         <header className="App-header">
