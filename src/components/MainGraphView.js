@@ -5,6 +5,7 @@ import * as dotFiles from "../utils/dotFiles"
 import DetailedNodeView from "./InfoSidebar"
 import * as dotparser from "dotparser"
 import * as api from "../utils/api"
+import { returnFlattenedMetadataDictionary } from "../utils/metadataFunctions"
 import {
   readDotString,
   parseChildArray
@@ -50,7 +51,6 @@ class MainGraphView extends Component {
         metadata: jsonMetadata
       })
       let dataFieldOfJsonMetadata = jsonMetadata.data
-
       this.parseMetadata(dataFieldOfJsonMetadata, null)
     })
   }

@@ -27,7 +27,7 @@ const checkIfNodeIsAdded = (
   callable,
   parentId
 ) => {
-  if (!graphMap.hasOwnProperty(potentialNodeId)) {
+  if (!Object.hasOwnProperty.call(graphMap, potentialNodeId)) {
     graphMap[potentialNodeId] = []
     const nodeObj = {
       id: potentialNodeId,
