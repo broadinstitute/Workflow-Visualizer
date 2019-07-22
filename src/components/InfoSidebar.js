@@ -17,7 +17,7 @@ function SingleColorStatus(props) {
   )
 }
 
-function ColorStatusList(props) {
+function ColorStatusList() {
   const statusColorMap = {
     Done: "#000000",
     Uninitalized: "#bf00ff",
@@ -30,7 +30,7 @@ function ColorStatusList(props) {
         {Object.keys(statusColorMap).map(key => {
           const colorValue = statusColorMap[key]
           return (
-            <li>
+            <li key={key}>
               <SingleColorStatus statusName={key} colorValue={colorValue} />
             </li>
           )

@@ -1,3 +1,5 @@
+import { createNodeIdFromMetadata } from "./nodeIdGeneration"
+
 const addCallToDictionary = (
   singleCall,
   calls,
@@ -5,12 +7,11 @@ const addCallToDictionary = (
   subworkflowParentId,
   callableWorkflowName
 ) => {
-  let newSingleCallName
-  if (subworkflowParentId === null) {
-    newSingleCallName = singleCall
-  } else {
-    newSingleCallName = `${subworkflowParentId}>${singleCall}`
-  }
+  const newSingleCallName = createNodeIdFromMetadata(
+    singleCall,
+    subworkflowParentId
+  )
+
   const singleCallObj = calls[singleCall]
   singleCallObj["callableWorkflowName"] = callableWorkflowName
   singleCallObj["parent"] = subworkflowParentId
@@ -18,14 +19,10 @@ const addCallToDictionary = (
 }
 
 const isThereSubworkflow = (singleCall, calls) => {
-  const bool = calls[singleCall].some(index => {
+  const doesAtLeastOneIndexHaveASubworkflow = calls[singleCall].some(index => {
     return Object.prototype.hasOwnProperty.call(index, "subWorkflowMetadata")
   })
-  return bool
-
-  // return calls[singleCall].some(index => {
-  //   return Object.prototype.hasOwnProperty.call(index, "subWorkflowMetadata")
-  // })
+  return doesAtLeastOneIndexHaveASubworkflow
 }
 
 const recursivelyFlattenSubworkflow = (
@@ -39,10 +36,11 @@ const recursivelyFlattenSubworkflow = (
     const subworkflowCalls = subworkflowMetadata.calls
     const callableWorkflowName = subworkflowMetadata.workflowName
 
-    const subworkflowParentId =
-      previousSubworkflowParentId === null
-        ? singleCall
-        : `${previousSubworkflowParentId}>${singleCall}`
+    const subworkflowParentId = createNodeIdFromMetadata(
+      singleCall,
+      previousSubworkflowParentId
+    )
+
     flattenASingleCall(
       subworkflowCalls,
       nodeDictionary,
@@ -98,21 +96,42 @@ const summarizeShardStatus = singleCallObj => {
   }, "Done")
 }
 
-const buildNonShardStatuses = (
-  statusDictionary,
-  singleCallName,
-  metadataDictionary
-) => {
+const computeDataObj = (singleCallName, metadataDictionary) => {
   const singleCallObj = metadataDictionary[singleCallName]
   const status =
     singleCallObj.length === 1
       ? singleCallObj[0].executionStatus
       : summarizeShardStatus(singleCallObj)
 
-  statusDictionary[singleCallName] = status
+  let parentType
+  if (singleCallObj.length > 1) {
+    parentType = "scatterParent"
+  } else if (
+    Object.prototype.hasOwnProperty.call(
+      singleCallObj[0],
+      "subWorkflowMetadata"
+    )
+  ) {
+    parentType = "subworkflow"
+  } else {
+    parentType = null
+  }
+
+  const dataObj = { status: status, parentType: parentType }
+
+  return dataObj
 }
 
-const buildShardStatuses = (
+const buildNonShardData = (
+  statusDictionary,
+  singleCallName,
+  metadataDictionary
+) => {
+  const dataObj = computeDataObj(singleCallName, metadataDictionary)
+  statusDictionary[singleCallName] = dataObj
+}
+
+const buildShardData = (
   statusDictionary,
   singleCallName,
   metadataDictionary
@@ -121,10 +140,9 @@ const buildShardStatuses = (
 
   if (singleCallObj.length > 1) {
     singleCallObj.forEach(shardObj => {
-      const shardStatus = shardObj.executionStatus
-      const shardIndex = shardObj.shardIndex
-      const shardName = `${singleCallName}_shard_${shardIndex}`
-      statusDictionary[shardName] = shardStatus
+      const dataObj = computeDataObj(singleCallName, metadataDictionary)
+      const shardId = createShardId(singleCallName, shardObj)
+      statusDictionary[shardId] = dataObj
     })
   }
 }
@@ -146,11 +164,18 @@ export const returnFlattenedMetadataDictionary = metadata => {
   return returnMetadataDictionary
 }
 
-export const returnStatusDictionary = metadata => {
+export const returnDataDictionary = metadata => {
   const metadataDictionary = returnFlattenedMetadataDictionary(metadata)
-  Object.keys(metadataDictionary).reduce((statusDictionary, singleCallName) => {
-    buildNonShardStatuses(statusDictionary, singleCallName, metadataDictionary)
-    buildShardStatuses(statusDictionary, singleCallName, metadataDictionary)
-    return statusDictionary
-  }, {})
+  return Object.keys(metadataDictionary).reduce(
+    (statusDictionary, singleCallName) => {
+      buildNonShardData(statusDictionary, singleCallName, metadataDictionary)
+      buildShardData(statusDictionary, singleCallName, metadataDictionary)
+      return statusDictionary
+    },
+    {}
+  )
+}
+
+export const createShardId = (parentOfShardId, shardObj) => {
+  return `${parentOfShardId}_shard_${shardObj.shardIndex}`
 }

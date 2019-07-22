@@ -1,4 +1,5 @@
-import * as dotparser from "dotparser"
+import dotparser from "dotparser"
+import { buildNodeIdFromDot } from "./nodeIdGeneration"
 
 /**
  * Exports two functions parseChildArray and readDotFile which both are functions
@@ -72,27 +73,38 @@ const setParent = (nodeId, parentId, idToNodeObj) => {
   }
 }
 
-const isolateTaskName = (fullStringName, characterSeparator) => {
+const findStringAfterSeparator = (fullStringName, characterSeparator) => {
+  if (fullStringName === null) {
+    return ""
+  }
+  // returns full string if there is no separator
   const characterIndex = fullStringName.indexOf(characterSeparator)
   return fullStringName.substring(characterIndex + 1)
 }
 
-export const parseChildArray = (
+const iterateChildArray = (
   childArray,
   graphMap,
   idToNodeObj,
   parentId,
   workflowId
 ) => {
-  childArray.forEach(function(child) {
+  childArray.forEach(child => {
     if (child.type === "attr_stmt") {
     } else if (child.type === "node_stmt") {
       const originalNodeIdFromDotString = child.node_id.id
-      const isolatedNodeName = isolateTaskName(originalNodeIdFromDotString, " ")
+      const isolatedNodeName = findStringAfterSeparator(
+        originalNodeIdFromDotString,
+        " "
+      )
       const callableAndTaskNameObj = separateCallableAndTaskName(
         isolatedNodeName
       )
-      const nodeId = `${workflowId}.${callableAndTaskNameObj.taskName}`
+
+      const nodeId = buildNodeIdFromDot(
+        workflowId,
+        callableAndTaskNameObj.taskName
+      )
       const nodeName = callableAndTaskNameObj.taskName
 
       checkIfNodeIsAdded(
@@ -107,27 +119,34 @@ export const parseChildArray = (
       setParent(nodeId, parentId, idToNodeObj)
     } else if (child.type === "edge_stmt") {
       const fromOriginalNodeIdFromDotString = child.edge_list[0].id
-      const isolatedFromNodeName = isolateTaskName(
+      const isolatedFromNodeName = findStringAfterSeparator(
         fromOriginalNodeIdFromDotString,
         " "
       )
       const fromCallableAndTaskNameObj = separateCallableAndTaskName(
         isolatedFromNodeName
       )
-      const fromNodeId = `${workflowId}.${fromCallableAndTaskNameObj.taskName}`
+
+      const fromNodeId = buildNodeIdFromDot(
+        workflowId,
+        fromCallableAndTaskNameObj.taskName
+      )
       const fromNodeName = fromCallableAndTaskNameObj.taskName
 
       const toOriginalNodeIdFromDotString = child.edge_list[1].id
-      const isolatedToNodeName = isolateTaskName(
+      const isolatedToNodeName = findStringAfterSeparator(
         toOriginalNodeIdFromDotString,
         " "
       )
       const toCallableAndTaskNameObj = separateCallableAndTaskName(
         isolatedToNodeName
       )
-      const toNodeId = `${workflowId}.${toCallableAndTaskNameObj.taskName}`
-      const toNodeName = toCallableAndTaskNameObj.taskName
 
+      const toNodeId = buildNodeIdFromDot(
+        workflowId,
+        toCallableAndTaskNameObj.taskName
+      )
+      const toNodeName = toCallableAndTaskNameObj.taskName
       checkIfNodeIsAdded(
         graphMap,
         idToNodeObj,
@@ -153,8 +172,16 @@ export const parseChildArray = (
       if (child.id.includes("cluster")) {
         const parentNameArray = lookForParentNames(child.children)
         const firstParentName = parentNameArray[0]
-        const isolatefirstParentName = isolateTaskName(firstParentName, " ")
-        const firstParentId = `${workflowId}.${isolatefirstParentName}`
+        const isolatefirstParentName = findStringAfterSeparator(
+          firstParentName,
+          " "
+        )
+        // const firstParentId = `${workflowId}>${isolatefirstParentName}`
+
+        const firstParentId = buildNodeIdFromDot(
+          workflowId,
+          isolatefirstParentName
+        )
 
         checkIfNodeIsAdded(
           graphMap,
@@ -187,6 +214,34 @@ export const parseChildArray = (
       console.warn("Unrecognized dot format")
     }
   })
+}
+
+export const parseCallable = callableString => {
+  if (callableString === null) {
+    return { alias: null, name: null }
+  }
+  const dotIndex = callableString.indexOf(".")
+
+  if (dotIndex === -1) {
+    return { alias: callableString, name: "" }
+  }
+
+  const subworkflowAlias = callableString.substring(0, dotIndex)
+  const workflowName = callableString.substring(dotIndex + 1)
+  const returnObj = { alias: subworkflowAlias, name: workflowName }
+  return returnObj
+}
+
+export const parseChildArray = (
+  childArray,
+  graphMap,
+  idToNodeObj,
+  parentId,
+  workflowId
+) => {
+  if (childArray !== null) {
+    iterateChildArray(childArray, graphMap, idToNodeObj, parentId, workflowId)
+  }
   const returnGraphAndIdToNodeMap = {
     graph: graphMap,
     idToNodeMap: idToNodeObj
