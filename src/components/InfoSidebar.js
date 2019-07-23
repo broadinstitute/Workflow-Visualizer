@@ -93,10 +93,10 @@ class InfoSidebar extends Component {
     var currentStatus = null
 
     if (this.props.metadata !== null) {
-      id = this.props.metadata.data.id
-      startWorkflow = this.props.metadata.data.start
-      endWorkflow = this.props.metadata.data.end
-      currentStatus = this.props.metadata.data.status
+      id = this.props.metadata.id
+      startWorkflow = this.props.metadata.start
+      endWorkflow = this.props.metadata.end
+      currentStatus = this.props.metadata.status
     }
 
     let displayName = null

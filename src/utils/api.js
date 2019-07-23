@@ -6,7 +6,7 @@ export const fetchMetadata = workflowID => {
   )
 
   return axios.get(encodedURI).then(function(response) {
-    return response
+    return response.data
   })
 }
 
@@ -16,6 +16,6 @@ export const queryWorkflows = () => {
   )
 
   return axios.get(uriEndpoint).then(response => {
-    return response
+    return response.data
   })
 }

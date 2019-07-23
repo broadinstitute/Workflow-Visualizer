@@ -96,26 +96,47 @@ const summarizeShardStatus = singleCallObj => {
   }, "Done")
 }
 
-const computeDataObj = (singleCallName, metadataDictionary) => {
-  const singleCallObj = metadataDictionary[singleCallName]
-  const status =
-    singleCallObj.length === 1
-      ? singleCallObj[0].executionStatus
-      : summarizeShardStatus(singleCallObj)
-
-  let parentType
-  if (singleCallObj.length > 1) {
-    parentType = "scatterParent"
-  } else if (
-    Object.prototype.hasOwnProperty.call(
-      singleCallObj[0],
-      "subWorkflowMetadata"
-    )
-  ) {
-    parentType = "subworkflow"
+const findStatus = singleCallObj => {
+  let status
+  if (Array.isArray(singleCallObj)) {
+    if (singleCallObj.length === 1) {
+      status = singleCallObj[0].executionStatus
+    } else {
+      status = summarizeShardStatus(singleCallObj)
+    }
   } else {
-    parentType = null
+    status = singleCallObj.executionStatus
   }
+  return status
+}
+
+const findParentType = singleCallObj => {
+  let parentType = null
+  if (Array.isArray(singleCallObj)) {
+    if (singleCallObj.length > 1) {
+      parentType = "scatterParent"
+    } else if (
+      Object.prototype.hasOwnProperty.call(
+        singleCallObj[0],
+        "subWorkflowMetadata"
+      )
+    ) {
+      parentType = "subworkflow"
+    }
+  } else {
+    if (
+      Object.prototype.hasOwnProperty.call(singleCallObj, "subWorkflowMetadata")
+    ) {
+      parentType = "subworkflow"
+    }
+  }
+
+  return parentType
+}
+
+const computeDataObj = singleCallObj => {
+  const status = findStatus(singleCallObj)
+  const parentType = findParentType(singleCallObj)
 
   const dataObj = { status: status, parentType: parentType }
 
@@ -127,10 +148,18 @@ const buildNonShardData = (
   singleCallName,
   metadataDictionary
 ) => {
-  const dataObj = computeDataObj(singleCallName, metadataDictionary)
+  const singleCallObj = metadataDictionary[singleCallName]
+  const dataObj = computeDataObj(singleCallObj)
   statusDictionary[singleCallName] = dataObj
 }
-
+/**
+ * computedataobj is just looking the scatterparent of the
+ * shard to create the data of the scatter obj.
+ *
+ * This is wrong. However, at the same time, I believe I wrote this the first time
+ * so you could handle the case of individual scatters being scatterParents themselves.
+ * So we need to be able to handle both cases.
+ */
 const buildShardData = (
   statusDictionary,
   singleCallName,
@@ -140,7 +169,7 @@ const buildShardData = (
 
   if (singleCallObj.length > 1) {
     singleCallObj.forEach(shardObj => {
-      const dataObj = computeDataObj(singleCallName, metadataDictionary)
+      const dataObj = computeDataObj(shardObj)
       const shardId = createShardId(singleCallName, shardObj)
       statusDictionary[shardId] = dataObj
     })
@@ -154,7 +183,7 @@ const buildShardData = (
  */
 export const returnFlattenedMetadataDictionary = metadata => {
   const flattenedMetadataDictionary = {}
-  const calls = metadata.data.calls
+  const calls = metadata.calls
 
   flattenASingleCall(calls, flattenedMetadataDictionary, null, null)
   const returnMetadataDictionary = Object.assign(
@@ -177,5 +206,6 @@ export const returnDataDictionary = metadata => {
 }
 
 export const createShardId = (parentOfShardId, shardObj) => {
-  return `${parentOfShardId}_shard_${shardObj.shardIndex}`
+  const shardIndex = shardObj === null ? null : shardObj.shardIndex
+  return `${parentOfShardId}>shard_${shardIndex}`
 }

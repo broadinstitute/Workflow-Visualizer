@@ -1,5 +1,4 @@
 import * as dotStringParsingFunctions from "./dotStringParsingFunctions"
-import dotparser from "dotparser"
 
 test("parseCallable: null callableString", () => {
   const returnDict = dotStringParsingFunctions.parseCallable(null)
@@ -159,5 +158,65 @@ test("readDotFile: sub3 dot file. Testing that scatter (iu) will only show one e
       }
     }
   }
+  expect(returnGraphAndIdNodeMap).toEqual(correctGraphAndIdNodeMap)
+})
+
+test("readDotFile: array_scatter_gather_3_series", () => {
+  const arrayScatterGather3Series =
+    'digraph arrays_scatters_if_three_series { compound=true; "call printOne" -> "call printTwo" "call printTwo" -> "call printThree" subgraph cluster_0 { "call printOne" "call printTwo" "call printThree" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
+  const returnGraphAndIdNodeMap = dotStringParsingFunctions.readDotString(
+    arrayScatterGather3Series
+  )
+  const correctGraphAndIdNodeMap = {
+    graph: {
+      "arrays_scatters_if_three_series>(length(row) == 2)": [],
+      "arrays_scatters_if_three_series>(table)": [],
+      "arrays_scatters_if_three_series>printOne": [
+        "arrays_scatters_if_three_series>printTwo"
+      ],
+      "arrays_scatters_if_three_series>printThree": [],
+      "arrays_scatters_if_three_series>printTwo": [
+        "arrays_scatters_if_three_series>printThree"
+      ]
+    },
+    idToNodeMap: {
+      "arrays_scatters_if_three_series>(length(row) == 2)": {
+        callableName: null,
+        directParent: "arrays_scatters_if_three_series>(table)",
+        id: "arrays_scatters_if_three_series>(length(row) == 2)",
+        isParent: true,
+        name: "if (length(row) == 2)"
+      },
+      "arrays_scatters_if_three_series>(table)": {
+        callableName: null,
+        directParent: null,
+        id: "arrays_scatters_if_three_series>(table)",
+        isParent: true,
+        name: "scatter (table)"
+      },
+      "arrays_scatters_if_three_series>printOne": {
+        callableName: "",
+        directParent: "arrays_scatters_if_three_series>(table)",
+        id: "arrays_scatters_if_three_series>printOne",
+        isParent: false,
+        name: "printOne"
+      },
+      "arrays_scatters_if_three_series>printThree": {
+        callableName: "",
+        directParent: "arrays_scatters_if_three_series>(table)",
+        id: "arrays_scatters_if_three_series>printThree",
+        isParent: false,
+        name: "printThree"
+      },
+      "arrays_scatters_if_three_series>printTwo": {
+        callableName: "",
+        directParent: "arrays_scatters_if_three_series>(table)",
+        id: "arrays_scatters_if_three_series>printTwo",
+        isParent: false,
+        name: "printTwo"
+      }
+    }
+  }
+
   expect(returnGraphAndIdNodeMap).toEqual(correctGraphAndIdNodeMap)
 })
