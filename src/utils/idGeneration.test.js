@@ -1,4 +1,4 @@
-import * as generator from "./nodeIdGeneration"
+import * as generator from "./idGeneration"
 
 test("createNodeIdFromMetadata: short expected call not null", () => {
   const returnString = generator.createNodeIdFromMetadata(

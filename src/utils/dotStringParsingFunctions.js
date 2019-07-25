@@ -1,5 +1,5 @@
 import dotparser from "dotparser"
-import { buildNodeIdFromDot } from "./nodeIdGeneration"
+import { buildNodeIdFromDot } from "./idGeneration"
 
 /**
  * Exports two functions parseChildArray and readDotFile which both are functions

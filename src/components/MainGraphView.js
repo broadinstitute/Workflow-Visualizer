@@ -20,10 +20,11 @@ import {
   initializeEdgesJSON,
   initializeNodesJSON
 } from "../utils/createCytoscapeGraphJSON"
+import { buildShardIdText, buildEdgeText } from "../utils/idGeneration"
 
 let workflowIdMetadata
 
-const currentDotFile = dotFiles.nested_subworkflows_4
+const currentDotFile = dotFiles.arrays_scatters_if_2_task_parallel
 
 class MainGraphView extends Component {
   constructor(props) {
@@ -41,7 +42,6 @@ class MainGraphView extends Component {
     this.updateUIWithMetadata = this.updateUIWithMetadata.bind(this)
 
     this.drawDirectedGraph = this.drawDirectedGraph.bind(this)
-    this.distributeParentEdges = this.distributeParentEdges.bind(this)
   }
 
   updateSelectedNodeData(nodeData) {
@@ -113,9 +113,18 @@ class MainGraphView extends Component {
 
         const subworkflowJSON = this.drawDirectedGraph(graphAndIdToNodeMapObj)
         cy.add(subworkflowJSON)
+
+        this.updateSelectedNodeData(subworkflowNodeObj.data())
+
+        // this is a hacky solution to distributing edges in expandSubworkflow.
+        // the correct solution would be something recursive to check if we needed to do this
+        // within distributeParent func
+
+        for (let i = 0; i < 5; i++) {
+          this.distributeParentEdges()
+        }
       })
     }
-    this.updateSelectedNodeData(subworkflowNodeObj.data())
   }
 
   mapOutgoingChildEdgesToParentNode = (descendantsCollection, parentNodeId) => {
@@ -191,8 +200,8 @@ class MainGraphView extends Component {
     // by removing descendants after remapping nodes, we will remove all descendent nodes and edges which makes sense
     // after remapping descendent edges/connections back to parent.
     descendantsCollection.remove()
-    this.updateSelectedNodeData(parentNode.data())
     this.distributeParentEdges()
+    this.updateSelectedNodeData(parentNode.data())
   }
 
   scatter = scatterParentNodeId => {
@@ -229,6 +238,9 @@ class MainGraphView extends Component {
           ])
         })
       })
+
+      this.distributeParentEdges()
+      this.updateSelectedNodeData(scatterParentNode.data())
     })
   }
 
@@ -238,18 +250,154 @@ class MainGraphView extends Component {
     removeEdgeObj.remove()
   }
 
-  distributeParentEdges() {
+  createEdgeJSON = (incomingNodeId, outgoingNodeId) => {
+    const edgeId = buildEdgeText(incomingNodeId, outgoingNodeId)
+    const singleEdgeJSON = {
+      data: { id: edgeId, source: incomingNodeId, target: outgoingNodeId }
+    }
+
+    return singleEdgeJSON
+  }
+
+  mapIncomingParentEdgesToChildNodes = (
+    listOfIncomingNodes,
+    childrenWithoutIncomingEdges,
+    parentNode
+  ) => {
+    const cy = this.graph.current.getCy()
+    const parentId = parentNode.id()
+    const edgeArray = []
+    listOfIncomingNodes.forEach(incomingNodeId => {
+      const incomingNode = cy.getElementById(incomingNodeId)
+      // remove edge from incomingNode to parent
+      this.removeSingleEdge(buildEdgeText(incomingNodeId, parentId))
+
+      if (
+        parentNode.data("parentType") === "scatterParent" &&
+        incomingNode.data("type") === "shard"
+      ) {
+        const incomingShardIndex = incomingNode.data("shardIndex")
+        // the outgoingShardId is a shard of the current parent
+        const outgoingShardId = buildShardIdText(parentId, incomingShardIndex)
+
+        edgeArray.push(this.createEdgeJSON(incomingNodeId, outgoingShardId))
+        // add the edgeId to something and batch later
+      } else {
+        childrenWithoutIncomingEdges.forEach(child => {
+          const childId = child.id()
+          edgeArray.push(this.createEdgeJSON(incomingNodeId, childId))
+
+          // add the edgeId to something and batch later
+        })
+      }
+    })
+    return edgeArray
+  }
+
+  mapOutgoingParentEdgesToChildNodes = (
+    listOfOutgoingNodes,
+    childrenWithoutOutgoingEdges,
+    parentNode
+  ) => {
+    const edgeArray = []
+    const cy = this.graph.current.getCy()
+    const parentId = parentNode.id()
+    listOfOutgoingNodes.forEach(outgoingNodeId => {
+      const outgoingNode = cy.getElementById(outgoingNodeId)
+
+      // remove edge from parent to outgoingNode
+      this.removeSingleEdge(buildEdgeText(parentId, outgoingNodeId))
+
+      if (
+        parentNode.data("parentType") === "scatterParent" &&
+        outgoingNode.data("type") === "shard"
+      ) {
+        const outgoingShardIndex = outgoingNode.data("shardIndex")
+        const incomingShardId = buildShardIdText(parentId, outgoingShardIndex)
+        edgeArray.push(this.createEdgeJSON(incomingShardId, outgoingNodeId))
+
+        // deal with the object
+      } else {
+        childrenWithoutOutgoingEdges.forEach(child => {
+          const childId = child.id()
+          edgeArray.push(this.createEdgeJSON(childId, outgoingNodeId))
+
+          // add the edgeId to something and batch later
+        })
+      }
+    })
+
+    return edgeArray
+  }
+
+  parseCollectionToArray = collection => {
+    const array = []
+
+    for (let i = 0; i < collection.length; i++) {
+      const singleNode = collection[i]
+      array.push(singleNode)
+    }
+
+    return array
+  }
+
+  parseParentDataToMakeChildEdges = (accumulatedNewEdges, parentNode) => {
+    const listOfOutgoingNodes = this.getOutgoingNodes(parentNode)
+    const listOfIncomingNodes = this.getIncomingNodes(parentNode)
+
+    const childrenCollection = parentNode.children()
+
+    const childrenArray = this.parseCollectionToArray(childrenCollection)
+
+    const childrenWithoutIncomingEdges = childrenArray.filter(function(child) {
+      return child.incomers().length === 0
+    })
+
+    const childrenWithoutOutgoingEdges = childrenArray.filter(function(child) {
+      return child.outgoers().length === 0
+    })
+
+    const newIncomingEdges = this.mapIncomingParentEdgesToChildNodes(
+      listOfIncomingNodes,
+      childrenWithoutIncomingEdges,
+      parentNode
+    )
+
+    const newOutgoingEdges = this.mapOutgoingParentEdgesToChildNodes(
+      listOfOutgoingNodes,
+      childrenWithoutOutgoingEdges,
+      parentNode
+    )
+
+    const newEdges = [...newIncomingEdges, ...newOutgoingEdges]
+    return [...accumulatedNewEdges, ...newEdges]
+  }
+
+  /**
+   * This function distributes edges point at a parent and remaps it towards the correct child
+   * which are nodes who do not have an incoming edge.
+   */
+
+  distributeParentEdges = () => {
     const cy = this.graph.current.getCy()
     const parentCollection = cy.nodes().filter('[type = "parent"]')
-    for (let i = 0; i < parentCollection.length; i++) {
-      const singleParentNode = parentCollection[i]
-      const parentId = singleParentNode.id()
-      const listOfOutgoingNodes = this.getOutgoingNodes(singleParentNode)
-      const listOfIncomingNodes = this.getIncomingNodes(singleParentNode)
+    // const edgesArray = []
 
-      this.buildEdgesForSingleParentNode(listOfOutgoingNodes, parentId, false)
-      this.buildEdgesForSingleParentNode(listOfIncomingNodes, parentId, true)
-    }
+    const parentObjArray = this.parseCollectionToArray(parentCollection)
+
+    const edgesArray = parentObjArray.reduce(
+      this.parseParentDataToMakeChildEdges,
+      []
+    )
+
+    // add all new edges to the directed graph
+
+    const edgesJSONObj = {}
+    edgesJSONObj["edges"] = edgesArray
+    cy.add(edgesJSONObj)
+    // cy.batch(() => {
+    //   cy.add(edgesJSONObj)
+    // })
   }
 
   buildEdgesForSingleParentNode = (
@@ -274,7 +422,7 @@ class MainGraphView extends Component {
         neighborNode.data("type") === "shard"
       ) {
         const shardIndex = neighborNode.data("shardIndex")
-        const parentShardId = `shard_${shardIndex}_of_${parentId}`
+        const parentShardId = `${parentId}>shard_${shardIndex}`
         let sourceShardId
         let targetShardId
         if (isForIncomingNeighbors) {

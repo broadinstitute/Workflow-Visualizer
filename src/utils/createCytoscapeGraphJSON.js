@@ -1,3 +1,5 @@
+import { buildEdgeText } from "./idGeneration"
+
 export const initializeNodesJSON = idToNodeMap => {
   const nodesArray = []
   const arrayOfAllNodes = Object.keys(idToNodeMap)
@@ -39,9 +41,10 @@ export const initializeEdgesJSON = graph => {
   arrayOfAllNodes.forEach(function(sourceNodeId) {
     const targetNodeArray = graph[sourceNodeId]
     targetNodeArray.forEach(function(targetNodeId) {
-      const edgeName = `edge_from_${sourceNodeId}_to_${targetNodeId}`
+      // const edgeName = `edge_from_${sourceNodeId}_to_${targetNodeId}`
+      const edgeId = buildEdgeText(sourceNodeId, targetNodeId)
       const singleEdgeJSON = {
-        data: { id: edgeName, source: sourceNodeId, target: targetNodeId }
+        data: { id: edgeId, source: sourceNodeId, target: targetNodeId }
       }
       edgesArray.push(singleEdgeJSON)
     })

@@ -9,15 +9,6 @@
 
 /**
  *
- * Helper Functions for both metadata and dot input naming transformation
- */
-
-const createNodeId = (parentName, childName) => {
-  return `${parentName}>${childName}`
-}
-
-/**
- *
  * FUNCTIONS FOR METADATA
  *
  */
@@ -60,4 +51,22 @@ export const createNodeIdFromMetadata = (singleCall, subworkflowParentId) => {
 
 export const buildNodeIdFromDot = (workflowId, taskName) => {
   return createNodeId(workflowId, taskName)
+}
+
+/**
+ *
+ * Helper Functions for both metadata and dot input naming transformation
+ */
+
+export const createNodeId = (parentId, childId) => {
+  return `${parentId}>${childId}`
+}
+
+export const buildShardIdText = (parentId, shardIndex) => {
+  const shardId = `shard_${shardIndex}`
+  return createNodeId(parentId, shardId)
+}
+
+export const buildEdgeText = (sourceId, targetId) => {
+  return `edge_from_${sourceId}_to_${targetId}`
 }

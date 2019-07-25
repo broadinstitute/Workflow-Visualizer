@@ -1,4 +1,4 @@
-import { createNodeIdFromMetadata } from "./nodeIdGeneration"
+import { createNodeIdFromMetadata, buildShardIdText } from "./idGeneration"
 
 const addCallToDictionary = (
   singleCall,
@@ -207,5 +207,5 @@ export const returnDataDictionary = metadata => {
 
 export const createShardId = (parentOfShardId, shardObj) => {
   const shardIndex = shardObj === null ? null : shardObj.shardIndex
-  return `${parentOfShardId}>shard_${shardIndex}`
+  return buildShardIdText(parentOfShardId, shardIndex)
 }

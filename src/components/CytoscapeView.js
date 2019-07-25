@@ -1,17 +1,18 @@
 import React, { Component } from "react"
 import cytoscape from "cytoscape"
 
-let cyStyle = {
+const cyStyle = {
   height: "800px",
   width: "100%",
   background: "white",
   borderStyle: "solid"
 }
 
-let conf = {
+const conf = {
   boxSelectionEnabled: false,
   autounselectify: true,
   zoomingEnabled: true,
+
   style: [
     {
       selector: "node",
@@ -70,7 +71,11 @@ let conf = {
         shape: "triangle"
       }
     }
-  ]
+  ],
+  layout: {
+    name: "grid",
+    rows: 1
+  }
 }
 
 class CytoscapeView extends Component {
@@ -83,10 +88,10 @@ class CytoscapeView extends Component {
 
   componentDidMount() {
     conf.container = this.cyelement.current
-    let cy = cytoscape(conf)
+    const cy1 = cytoscape(conf)
 
-    this.cy = cy
-    cy.json({ elements: this.props.elements }) //renders cy based on JSON input
+    this.cy = cy1
+    this.cy.json({ elements: this.props.elements }) // renders cy based on JSON input
   }
 
   shouldComponentUpdate() {
