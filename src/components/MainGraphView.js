@@ -1,37 +1,41 @@
-import React, { Component } from "react"
-import CytoscapeView from "./CytoscapeView"
-import "../MainGraphView.css"
-import * as dotFiles from "../utils/dotFiles"
-import DetailedNodeView from "./InfoSidebar"
 import * as dotparser from "dotparser"
+import React, { Component } from "react"
+import "../MainGraphView.css"
 import * as api from "../utils/api"
-import {
-  returnFlattenedMetadataDictionary,
-  returnDataDictionary,
-  createShardId
-} from "../utils/metadataFunctions"
-import {
-  readDotString,
-  parseChildArray,
-  parseCallable
-} from "../utils/dotStringParsingFunctions"
-
 import {
   initializeEdgesJSON,
   initializeNodesJSON
 } from "../utils/createCytoscapeGraphJSON"
-import { buildShardIdText, buildEdgeText } from "../utils/idGeneration"
+import * as dotFiles from "../utils/dotFiles"
+import {
+  parseCallable,
+  parseChildArray,
+  readDotString
+} from "../utils/dotStringParsingFunctions"
+import {
+  buildEdgeText,
+  buildShardIdText,
+  createNodeId
+} from "../utils/idGeneration"
+import {
+  createShardId,
+  returnDataDictionary,
+  returnFlattenedMetadataDictionary
+} from "../utils/metadataFunctions"
+import CytoscapeView from "./CytoscapeView"
+import DetailedNodeView from "./InfoSidebar"
 
 let workflowIdMetadata
 
-const currentDotFile = dotFiles.arrays_scatters_if_2_task_parallel
+const currentDotFile = dotFiles.aliased_subworkflows
 
 class MainGraphView extends Component {
   constructor(props) {
     super(props)
     this.state = {
       currentSelectedNodeData: null,
-      metadata: null
+      metadata: null,
+      isBasicView: false
     }
 
     this.graph = React.createRef()
@@ -42,6 +46,22 @@ class MainGraphView extends Component {
     this.updateUIWithMetadata = this.updateUIWithMetadata.bind(this)
 
     this.drawDirectedGraph = this.drawDirectedGraph.bind(this)
+  }
+
+  toggleViewType = () => {
+    // logic is inverted because this is the state prior to changing
+    // so if state isBasicView = false, then, since in the immediate future it will be true,
+    // cytoscape model should display basicview
+    if (this.state.isBasicView) {
+      this.createDetailedView()
+    } else {
+      this.createBasicView()
+    }
+
+    this.setState(prevState => ({
+      isBasicView: !prevState.isBasicView
+    }))
+    console.log("I changed views!")
   }
 
   updateSelectedNodeData(nodeData) {
@@ -81,6 +101,16 @@ class MainGraphView extends Component {
         nodeObj.data("status", status)
         nodeObj.data("parentType", parentType)
       }
+    })
+  }
+
+  batchAddEdges = edgesArray => {
+    const cy = this.graph.current.getCy()
+    const edgesJSONObj = {}
+    edgesJSONObj["edges"] = edgesArray
+
+    cy.batch(() => {
+      cy.add(edgesJSONObj)
     })
   }
 
@@ -137,22 +167,18 @@ class MainGraphView extends Component {
       descendantsCollection
     )
 
-    cy.batch(() => {
-      unscatterOutgoingNeighbors.forEach(outgoingNode => {
-        const outgoingNodeId = outgoingNode.id()
-        const edgeId = `edge_from_${parentNodeId}_to_${outgoingNodeId}`
-        cy.add([
-          {
-            group: "edges",
-            data: {
-              id: edgeId,
-              source: parentNodeId,
-              target: outgoingNodeId
-            }
-          }
-        ])
-      })
+    const outgoingNeighborsArray = this.parseCollectionToArray(
+      unscatterOutgoingNeighbors
+    )
+
+    const edgesArray = []
+    outgoingNeighborsArray.forEach(outgoingNode => {
+      const outgoingNodeId = outgoingNode.id()
+      const singleEdgeJson = this.createEdgeJSON(parentNodeId, outgoingNodeId)
+      edgesArray.push(singleEdgeJson)
     })
+
+    this.batchAddEdges(edgesArray)
   }
 
   mapIncomingChildEdgesToParentNode = (descendantsCollection, parentNodeId) => {
@@ -250,10 +276,22 @@ class MainGraphView extends Component {
     removeEdgeObj.remove()
   }
 
-  createEdgeJSON = (incomingNodeId, outgoingNodeId) => {
+  createEdgeJSON = (incomingNodeId, outgoingNodeId, hiddenNodesData = null) => {
     const edgeId = buildEdgeText(incomingNodeId, outgoingNodeId)
-    const singleEdgeJSON = {
-      data: { id: edgeId, source: incomingNodeId, target: outgoingNodeId }
+    let singleEdgeJSON
+    if (hiddenNodesData === null || hiddenNodesData === undefined) {
+      singleEdgeJSON = {
+        data: { id: edgeId, source: incomingNodeId, target: outgoingNodeId }
+      }
+    } else {
+      singleEdgeJSON = {
+        data: {
+          id: edgeId,
+          source: incomingNodeId,
+          target: outgoingNodeId,
+          hiddenNodes: hiddenNodesData
+        }
+      }
     }
 
     return singleEdgeJSON
@@ -269,8 +307,11 @@ class MainGraphView extends Component {
     const edgeArray = []
     listOfIncomingNodes.forEach(incomingNodeId => {
       const incomingNode = cy.getElementById(incomingNodeId)
-      // remove edge from incomingNode to parent
-      this.removeSingleEdge(buildEdgeText(incomingNodeId, parentId))
+      // Get hiddenNode data from edge and then remove edge from incomingNode to parent
+      const edgeToBeRemovedId = buildEdgeText(incomingNodeId, parentId)
+      const edgeObj = cy.getElementById(edgeToBeRemovedId)
+      const hiddenNodes = edgeObj.data("hiddenNodes")
+      this.removeSingleEdge(edgeToBeRemovedId)
 
       if (
         parentNode.data("parentType") === "scatterParent" &&
@@ -280,14 +321,15 @@ class MainGraphView extends Component {
         // the outgoingShardId is a shard of the current parent
         const outgoingShardId = buildShardIdText(parentId, incomingShardIndex)
 
-        edgeArray.push(this.createEdgeJSON(incomingNodeId, outgoingShardId))
-        // add the edgeId to something and batch later
+        edgeArray.push(
+          this.createEdgeJSON(incomingNodeId, outgoingShardId, hiddenNodes)
+        )
       } else {
         childrenWithoutIncomingEdges.forEach(child => {
           const childId = child.id()
-          edgeArray.push(this.createEdgeJSON(incomingNodeId, childId))
-
-          // add the edgeId to something and batch later
+          edgeArray.push(
+            this.createEdgeJSON(incomingNodeId, childId, hiddenNodes)
+          )
         })
       }
     })
@@ -306,7 +348,10 @@ class MainGraphView extends Component {
       const outgoingNode = cy.getElementById(outgoingNodeId)
 
       // remove edge from parent to outgoingNode
-      this.removeSingleEdge(buildEdgeText(parentId, outgoingNodeId))
+      const edgeToBeRemovedId = buildEdgeText(parentId, outgoingNodeId)
+      const edgeObj = cy.getElementById(edgeToBeRemovedId)
+      const hiddenNodes = edgeObj.data("hiddenNodes")
+      this.removeSingleEdge(edgeToBeRemovedId)
 
       if (
         parentNode.data("parentType") === "scatterParent" &&
@@ -314,13 +359,17 @@ class MainGraphView extends Component {
       ) {
         const outgoingShardIndex = outgoingNode.data("shardIndex")
         const incomingShardId = buildShardIdText(parentId, outgoingShardIndex)
-        edgeArray.push(this.createEdgeJSON(incomingShardId, outgoingNodeId))
+        edgeArray.push(
+          this.createEdgeJSON(incomingShardId, outgoingNodeId, hiddenNodes)
+        )
 
         // deal with the object
       } else {
         childrenWithoutOutgoingEdges.forEach(child => {
           const childId = child.id()
-          edgeArray.push(this.createEdgeJSON(childId, outgoingNodeId))
+          edgeArray.push(
+            this.createEdgeJSON(childId, outgoingNodeId, hiddenNodes)
+          )
 
           // add the edgeId to something and batch later
         })
@@ -334,16 +383,16 @@ class MainGraphView extends Component {
     const array = []
 
     for (let i = 0; i < collection.length; i++) {
-      const singleNode = collection[i]
-      array.push(singleNode)
+      const singleElement = collection[i]
+      array.push(singleElement)
     }
 
     return array
   }
 
   parseParentDataToMakeChildEdges = (accumulatedNewEdges, parentNode) => {
-    const listOfOutgoingNodes = this.getOutgoingNodes(parentNode)
-    const listOfIncomingNodes = this.getIncomingNodes(parentNode)
+    const listOfOutgoingNodes = this.getOutgoingNodeIds(parentNode)
+    const listOfIncomingNodes = this.getIncomingNodeIds(parentNode)
 
     const childrenCollection = parentNode.children()
 
@@ -392,121 +441,40 @@ class MainGraphView extends Component {
 
     // add all new edges to the directed graph
 
-    const edgesJSONObj = {}
-    edgesJSONObj["edges"] = edgesArray
-    cy.add(edgesJSONObj)
+    // const edgesJSONObj = {}
+    // edgesJSONObj["edges"] = edgesArray
+
     // cy.batch(() => {
     //   cy.add(edgesJSONObj)
     // })
+
+    this.batchAddEdges(edgesArray)
   }
 
-  buildEdgesForSingleParentNode = (
-    listOfNeighbors,
-    parentId,
-    isForIncomingNeighbors
-  ) => {
-    const cy = this.graph.current.getCy()
-    listOfNeighbors.forEach(neighborId => {
-      let removedParentEdgeId
-      if (isForIncomingNeighbors) {
-        removedParentEdgeId = `edge_from_${neighborId}_to_${parentId}`
-      } else {
-        removedParentEdgeId = `edge_from_${parentId}_to_${neighborId}`
-      }
-      this.removeSingleEdge(removedParentEdgeId)
-      const neighborNode = cy.getElementById(neighborId)
-      const parentNode = cy.getElementById(parentId)
-      const childrenOfParent = parentNode.children()
-      if (
-        parentNode.data("parentType") === "scatterParent" &&
-        neighborNode.data("type") === "shard"
-      ) {
-        const shardIndex = neighborNode.data("shardIndex")
-        const parentShardId = `${parentId}>shard_${shardIndex}`
-        let sourceShardId
-        let targetShardId
-        if (isForIncomingNeighbors) {
-          sourceShardId = neighborId
-          targetShardId = parentShardId
-        } else {
-          sourceShardId = parentShardId
-          targetShardId = neighborId
-        }
-        const newShardEdgeId = `edge_from_${sourceShardId}_to_${targetShardId}`
-        cy.add([
-          {
-            group: "edges",
-            data: {
-              id: newShardEdgeId,
-              source: sourceShardId,
-              target: targetShardId
-            }
-          }
-        ])
-      } else {
-        for (let i = 0; i < childrenOfParent.length; i++) {
-          const childId = childrenOfParent[i].id()
-          let sourceId
-          let targetId
-          if (isForIncomingNeighbors) {
-            sourceId = neighborId
-            targetId = childId
-          } else {
-            sourceId = childId
-            targetId = neighborId
-          }
-          const newShardEdgeId = `edge_from_${sourceId}_to_${targetId}`
-          cy.add([
-            {
-              group: "edges",
-              data: { id: newShardEdgeId, source: sourceId, target: targetId }
-            }
-          ])
-        }
-      }
+  getOutgoingNodesObj = node => {
+    const outgoingNodes = node.outgoers().filter("nodes")
+    const outgoingNodesArray = this.parseCollectionToArray(outgoingNodes)
+    return outgoingNodesArray
+  }
+
+  getOutgoingNodeIds = node => {
+    const outgoingNodeIdsList = this.getOutgoingNodesObj(node).map(node => {
+      return node.id()
     })
+    return outgoingNodeIdsList
   }
 
-  getOutgoingNodes = node => {
-    const outgoingEdgesAndNodes = node.outgoers()
-    return this.parseOnlyNodes(outgoingEdgesAndNodes)
+  getIncomingNodesObj = node => {
+    const incomingNodes = node.incomers().filter("nodes")
+    const incomingNodesArray = this.parseCollectionToArray(incomingNodes)
+    return incomingNodesArray
   }
 
-  getIncomingNodes = node => {
-    const incomingEdgesandNodes = node.incomers()
-    return this.parseOnlyNodes(incomingEdgesandNodes)
-  }
-
-  parseOnlyNodes = edgesAndNodesCollection => {
-    const length = edgesAndNodesCollection.length
-    const listOfNodes = []
-    for (let i = 0; i < length; i++) {
-      const nodeId = edgesAndNodesCollection[i].id()
-      const isNode = edgesAndNodesCollection[i].isNode()
-      if (isNode) {
-        listOfNodes.push(nodeId)
-      }
-    }
-    return listOfNodes
-  }
-
-  parseOutgoingAndIncomingEdges = node => {
-    const incomingEdgesandNodes = node.incomers()
-    const outgoingEdgesAndNodes = node.outgoers()
-    const listOfEdges = []
-    this.parseOnlyEdges(outgoingEdgesAndNodes, listOfEdges)
-    this.parseOnlyEdges(incomingEdgesandNodes, listOfEdges)
-    return listOfEdges
-  }
-
-  parseOnlyEdges = (edgesAndNodes, listOfEdges) => {
-    for (let i = 0; i < edgesAndNodes.length; i++) {
-      const edgeId = edgesAndNodes[i].id()
-      const isEdge = edgesAndNodes[i].isEdge()
-      if (isEdge) {
-        listOfEdges.push(edgeId)
-      }
-    }
+  getIncomingNodeIds = node => {
+    const incomingNodeIdsList = this.getIncomingNodesObj(node).map(node => {
+      return node.id()
+    })
+    return incomingNodeIdsList
   }
 
   drawDirectedGraph(graphAndIdToNodeMapObj) {
@@ -551,8 +519,264 @@ class MainGraphView extends Component {
     }
   }
 
+  isScatter = nodeArray => {
+    return nodeArray.every(node => {
+      return node.data("type") === "shard"
+    })
+  }
+
+  findParentPrefixOfShardId = shardId => {
+    const lastIndexOfGreaterThan = shardId.lastIndexOf(">")
+    const parentPrefix = shardId.substring(0, lastIndexOfGreaterThan)
+    return parentPrefix
+  }
+
+  createHiddenNodesData = (removedNodeId, incomingNodeId, outgoingNodeId) => {
+    const cy = this.graph.current.getCy()
+    // this is for hidden nodes field
+    const edgeToIncomingNodeId = buildEdgeText(incomingNodeId, removedNodeId)
+    const edgeToIncomingNode = cy.getElementById(edgeToIncomingNodeId)
+
+    let incomingHiddenNodes = edgeToIncomingNode.data("hiddenNodes")
+
+    if (incomingHiddenNodes === undefined) {
+      incomingHiddenNodes = []
+    }
+
+    const edgeToOutgoingNodeId = buildEdgeText(removedNodeId, outgoingNodeId)
+    const edgeToOutgoingNode = cy.getElementById(edgeToOutgoingNodeId)
+
+    let outgoingHiddenNodes = edgeToOutgoingNode.data("hiddenNodes")
+
+    if (outgoingHiddenNodes === undefined) {
+      outgoingHiddenNodes = []
+    }
+    // es6 spread function to concat arrays together.
+    const hiddenNodesArray = [
+      ...[...incomingHiddenNodes, ...[removedNodeId]],
+      ...outgoingHiddenNodes
+    ]
+
+    const hiddenNodesJson = JSON.stringify(hiddenNodesArray)
+
+    return hiddenNodesJson
+  }
+
+  updateRemovedNodeDataScratch = (removedNodeId, removedNodeData) => {
+    const cy = this.graph.current.getCy()
+    // check if dictionary is initialized. If not, make it. If yes, get it into an object.
+    const removedNodeJson = cy.scratch("removedNodes")
+    let removedNodeDict
+    if (removedNodeJson === undefined) {
+      removedNodeDict = {}
+    } else {
+      removedNodeDict = JSON.parse(removedNodeJson)
+    }
+
+    removedNodeDict[removedNodeId] = removedNodeData
+    const updatedRemovedNodeJson = JSON.stringify(removedNodeDict)
+    cy.scratch("removedNodes", updatedRemovedNodeJson)
+  }
+
+  createBasicScatterEdges = (
+    incomingNeighborArray,
+    outgoingNeighborArray,
+    removedNodeId
+  ) => {
+    const incomingNode = incomingNeighborArray[0]
+    const incomingNodeId = incomingNode.id()
+    const parentPrefix = this.findParentPrefixOfShardId(incomingNodeId)
+
+    const edgesJsonArray = []
+    outgoingNeighborArray.forEach(outgoingNode => {
+      const shardIndex = outgoingNode.data("shardIndex")
+      const incomingShardId = buildShardIdText(parentPrefix, shardIndex)
+      const outgoingShardId = outgoingNode.id()
+
+      const hiddenNodesJson = this.createHiddenNodesData(
+        removedNodeId,
+        incomingShardId,
+        outgoingShardId
+      )
+
+      const singleEdgeJson = this.createEdgeJSON(
+        incomingShardId,
+        outgoingShardId,
+        hiddenNodesJson
+      )
+      edgesJsonArray.push(singleEdgeJson)
+    })
+
+    return edgesJsonArray
+  }
+
+  createBasicEdges = (
+    incomingNeighborArray,
+    outgoingNeighborArray,
+    removedNodeId
+  ) => {
+    const edgeJsonArray = []
+    outgoingNeighborArray.forEach(outgoingNode => {
+      incomingNeighborArray.forEach(incomingNode => {
+        const hiddenNodesJson = this.createHiddenNodesData(
+          removedNodeId,
+          incomingNode.id(),
+          outgoingNode.id()
+        )
+
+        const singleEdgeJson = this.createEdgeJSON(
+          incomingNode.id(),
+          outgoingNode.id(),
+          hiddenNodesJson
+        )
+        edgeJsonArray.push(singleEdgeJson)
+      })
+    })
+    return edgeJsonArray
+  }
+
+  createBasicView = () => {
+    const cy = this.graph.current.getCy()
+    const nodesOnlyInAdvancedViewCollection = cy.nodes(
+      '[variableClass != "call"][variableClass != "scatter"][variableClass != "if"][type != "shard"]'
+    )
+    const nodesToRemoveArray = this.parseCollectionToArray(
+      nodesOnlyInAdvancedViewCollection
+    )
+
+    let edgesArray = []
+    nodesToRemoveArray.forEach(node => {
+      const outgoingNeighborArray = this.getOutgoingNodesObj(node)
+      const incomingNeighborArray = this.getIncomingNodesObj(node)
+
+      // remove current detailedNode
+      const removedNodeId = node.id()
+      const removedNodeData = node.data()
+      cy.remove(node)
+
+      // update scratch
+      this.updateRemovedNodeDataScratch(removedNodeId, removedNodeData)
+
+      // check for scatter case
+      if (
+        this.isScatter(outgoingNeighborArray) &&
+        this.isScatter(incomingNeighborArray) &&
+        outgoingNeighborArray.length > 0 &&
+        incomingNeighborArray.length > 0 &&
+        outgoingNeighborArray.length === incomingNeighborArray.length
+      ) {
+        const scatterEdgeArray = this.createBasicScatterEdges(
+          incomingNeighborArray,
+          outgoingNeighborArray,
+          removedNodeId
+        )
+        edgesArray = [...edgesArray, ...scatterEdgeArray]
+      } else {
+        const basicEdgeArray = this.createBasicEdges(
+          incomingNeighborArray,
+          outgoingNeighborArray,
+          removedNodeId
+        )
+        edgesArray = [...edgesArray, ...basicEdgeArray]
+      }
+    })
+
+    this.batchAddEdges(edgesArray)
+  }
+
+  generateNodeJson = removedNodeDict => {
+    const nodeArray = []
+    Object.keys(removedNodeDict).forEach(nodeId => {
+      const nodeData = removedNodeDict[nodeId]
+      nodeArray.push({ data: nodeData })
+    })
+    return nodeArray
+  }
+
+  // cy.add([
+  //   {
+  //     group: "nodes",
+  //     data: {
+  //       id: shardId,
+  //       name: shardName,
+  //       type: "shard",
+  //       shardIndex: shard.shardIndex,
+  //       parent: scatterParentNodeId,
+  //       status: shard.executionStatus
+  //     }
+  //   }
+  // ])
+
+  addRemovedNodes = () => {
+    const cy = this.graph.current.getCy()
+    const removedNodeString = cy.scratch("removedNodes")
+    const removedNodeDict = JSON.parse(removedNodeString)
+
+    const addedNodesJson = this.generateNodeJson(removedNodeDict)
+
+    const nodesJsonObj = {}
+    nodesJsonObj["nodes"] = addedNodesJson
+
+    cy.batch(() => {
+      cy.add(nodesJsonObj)
+    })
+
+    // cy.ready(() => {
+    //   cy.add(nodesJsonObj)
+    // })
+
+    // updated scratch 'removedNodes'. It should be empty now since all nodes are added back.
+    const stringifyEmptyDict = JSON.stringify({})
+    cy.scratch("removedNodes", stringifyEmptyDict)
+  }
+
+  createDetailedView = () => {
+    const cy = this.graph.current.getCy()
+
+    this.addRemovedNodes()
+
+    const collection = cy.edges().filter("[hiddenNodes]")
+    const edgesWithHiddenNodes = this.parseCollectionToArray(collection)
+    const edgeJson = []
+    edgesWithHiddenNodes.forEach(edge => {
+      const hiddenNodesString = edge.data("hiddenNodes")
+      const hiddenNodesArray = JSON.parse(hiddenNodesString)
+
+      hiddenNodesArray.forEach((nodeId, index, array) => {
+        if (index === 0) {
+          // skip this index
+        } else {
+          const prevNodeId = array[index - 1]
+          const singleEdgeJson = this.createEdgeJSON(prevNodeId, nodeId, null)
+          edgeJson.push(singleEdgeJson)
+        }
+      })
+
+      // now add the source edge and target edge.
+      const sourceNodeId = edge.data("source")
+      const sourceEdgeJson = this.createEdgeJSON(
+        sourceNodeId,
+        hiddenNodesArray[0]
+      )
+      edgeJson.push(sourceEdgeJson)
+
+      const targetNodeId = edge.data("target")
+      const targetEdgeJson = this.createEdgeJSON(
+        hiddenNodesArray[hiddenNodesArray.length - 1],
+        targetNodeId
+      )
+      edgeJson.push(targetEdgeJson)
+
+      // after building new edge, remove the edge.
+      this.removeSingleEdge(edge.id())
+    })
+
+    this.batchAddEdges(edgeJson)
+  }
+
   componentDidMount() {
     const cy = this.graph.current.getCy()
+
     this.distributeParentEdges()
 
     cy.on("tapend", "node", evt => {
@@ -610,6 +834,8 @@ class MainGraphView extends Component {
           currentSelectedNodeData={this.state.currentSelectedNodeData}
           chooseLayout={this.chooseLayout}
           metadata={this.state.metadata}
+          toggleViewFnc={this.toggleViewType}
+          isBasicView={this.state.isBasicView}
         />
       </div>
     )

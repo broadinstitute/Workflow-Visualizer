@@ -13,9 +13,9 @@ export const arrays_scatters_if_two_series =
 export const arrays_scatters_if_three_series =
   'digraph arrays_scatters_if_three_series { compound=true; "call printOne" -> "call printTwo" "call printTwo" -> "call printThree" subgraph cluster_0 { "call printOne" "call printTwo" "call printThree" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
 export const aliased_subworkflows =
-  'digraph aliased_subworkflows { compound=true; "call subwfT" -> "Array[Int] fs" "Array[Int] fs" -> "call subwfF" "call subwfT" "Array[Int] fs" "call subwfF" }'
+  'digraph aliased_subworkflows { compound=true; "call subworkflow.subwf&subwfT" -> "Array[Int] fs" "Array[Int] fs" -> "call subworkflow.subwf&subwfF" "call subworkflow.subwf&subwfT" "Array[Int] fs" "call subworkflow.subwf&subwfF" }'
 export const subworkflow =
-  'digraph subwf { compound=true; subgraph cluster_0 { "call increment" "scatter (is)" [shape=plaintext] } }'
+  'digraph subwf { compound=true; subgraph cluster_0 { "call increment&increment" "scatter (is)" [shape=plaintext] } }'
 export const arrays_scatter_series_and_parallel =
   'digraph arrays_scatter_series_and_parallel { compound=true; "call printTwo" -> "call printThree" subgraph cluster_0 { "call printOne" "call printTwo" "call printThree" subgraph cluster_1 { "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
 export const three_imports_sub_scatter =

@@ -51,6 +51,9 @@ function RenderInfoSidebarUI(props) {
         <option value="grid">Grid</option>
         <option value="random">Random</option>
       </select>
+
+      <button onClick={props.toggleView}>{props.buttonText}</button>
+
       <p>
         You've selected node <strong>"{props.selectedNode}"</strong>
       </p>
@@ -107,6 +110,10 @@ class InfoSidebar extends Component {
       displayData = this.props.currentSelectedNodeData
     }
 
+    const buttonText = this.props.isBasicView
+      ? "Toggle Detailed View"
+      : "Toggle Basic View"
+
     return (
       <RenderInfoSidebarUI
         selectedNode={displayName}
@@ -117,6 +124,8 @@ class InfoSidebar extends Component {
         startTime={startWorkflow}
         endTime={endWorkflow}
         currentStatus={currentStatus}
+        toggleView={this.props.toggleViewFnc}
+        buttonText={buttonText}
       />
     )
   }

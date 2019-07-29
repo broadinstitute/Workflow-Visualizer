@@ -26,7 +26,8 @@ const checkIfNodeIsAdded = (
   potentialNodeId,
   potentialNodeName,
   callable,
-  parentId
+  parentId,
+  variableType
 ) => {
   if (!Object.hasOwnProperty.call(graphMap, potentialNodeId)) {
     graphMap[potentialNodeId] = []
@@ -35,7 +36,8 @@ const checkIfNodeIsAdded = (
       name: potentialNodeName,
       directParent: parentId,
       isParent: false,
-      callableName: callable
+      callableName: callable,
+      variableClass: variableType
     }
     idToNodeObjMap[potentialNodeId] = nodeObj
   }
@@ -82,6 +84,91 @@ const findStringAfterSeparator = (fullStringName, characterSeparator) => {
   return fullStringName.substring(characterIndex + 1)
 }
 
+const findStringBeforeSeparator = (fullStringName, characterSeparator) => {
+  if (fullStringName === null) {
+    return ""
+  }
+
+  const characterIndex = fullStringName.indexOf(characterSeparator)
+  return fullStringName.substring(0, characterIndex)
+}
+
+/**
+ * Populates data onto graphMap and this specific node information onto idToNodeObj based on
+ * the information contained in the originNodeIdFromDotString
+ * @param {Object} graphMap
+ * @param {Object} idToNodeObj
+ * @param {String} parentId
+ * @param {String} workflowId
+ * @param {String} originalNodeIdFromDotString
+ */
+const parseAndSetNodeData = (
+  graphMap,
+  idToNodeObj,
+  parentId,
+  workflowId,
+  originalNodeIdFromDotString
+) => {
+  const variableType = findStringBeforeSeparator(
+    originalNodeIdFromDotString,
+    " "
+  )
+  const callableAndTaskNameString = findStringAfterSeparator(
+    originalNodeIdFromDotString,
+    " "
+  )
+  const callableAndTaskNameObj = separateCallableAndTaskName(
+    callableAndTaskNameString
+  )
+
+  const nodeId = buildNodeIdFromDot(workflowId, callableAndTaskNameObj.taskName)
+  const nodeName = callableAndTaskNameObj.taskName
+
+  checkIfNodeIsAdded(
+    graphMap,
+    idToNodeObj,
+    nodeId,
+    nodeName,
+    callableAndTaskNameObj.callable,
+    parentId,
+    variableType
+  )
+
+  setParent(nodeId, parentId, idToNodeObj)
+}
+/**
+ * When we encounter an edge, we compute the node id's for incident nodes on the edge.
+ * Then, update the graphMap accordingly to denote a new edge
+ * @param {String} fromNodeDotId
+ * @param {String} toNodeDotId
+ * @param {String} workflowId
+ * @param {Object} graphMap
+ */
+const addEdgeToGraph = (fromNodeDotId, toNodeDotId, workflowId, graphMap) => {
+  const callableAndTaskNameString = findStringAfterSeparator(fromNodeDotId, " ")
+  const fromCallableAndTaskNameObj = separateCallableAndTaskName(
+    callableAndTaskNameString
+  )
+
+  const fromNodeId = buildNodeIdFromDot(
+    workflowId,
+    fromCallableAndTaskNameObj.taskName
+  )
+
+  const isolatedToNodeName = findStringAfterSeparator(toNodeDotId, " ")
+  const toCallableAndTaskNameObj = separateCallableAndTaskName(
+    isolatedToNodeName
+  )
+
+  const toNodeId = buildNodeIdFromDot(
+    workflowId,
+    toCallableAndTaskNameObj.taskName
+  )
+
+  // now that we have both from and to node id generated, let's chuck it into the graph
+  graphMap[fromNodeId].push(toNodeId)
+}
+
 const iterateChildArray = (
   childArray,
   graphMap,
@@ -93,90 +180,48 @@ const iterateChildArray = (
     if (child.type === "attr_stmt") {
     } else if (child.type === "node_stmt") {
       const originalNodeIdFromDotString = child.node_id.id
-      const isolatedNodeName = findStringAfterSeparator(
-        originalNodeIdFromDotString,
-        " "
-      )
-      const callableAndTaskNameObj = separateCallableAndTaskName(
-        isolatedNodeName
-      )
 
-      const nodeId = buildNodeIdFromDot(
-        workflowId,
-        callableAndTaskNameObj.taskName
-      )
-      const nodeName = callableAndTaskNameObj.taskName
-
-      checkIfNodeIsAdded(
+      parseAndSetNodeData(
         graphMap,
         idToNodeObj,
-        nodeId,
-        nodeName,
-        callableAndTaskNameObj.callable,
-        parentId
+        parentId,
+        workflowId,
+        originalNodeIdFromDotString
       )
-
-      setParent(nodeId, parentId, idToNodeObj)
     } else if (child.type === "edge_stmt") {
       const fromOriginalNodeIdFromDotString = child.edge_list[0].id
-      const isolatedFromNodeName = findStringAfterSeparator(
-        fromOriginalNodeIdFromDotString,
-        " "
-      )
-      const fromCallableAndTaskNameObj = separateCallableAndTaskName(
-        isolatedFromNodeName
-      )
-
-      const fromNodeId = buildNodeIdFromDot(
+      parseAndSetNodeData(
+        graphMap,
+        idToNodeObj,
+        parentId,
         workflowId,
-        fromCallableAndTaskNameObj.taskName
+        fromOriginalNodeIdFromDotString
       )
-      const fromNodeName = fromCallableAndTaskNameObj.taskName
 
       const toOriginalNodeIdFromDotString = child.edge_list[1].id
-      const isolatedToNodeName = findStringAfterSeparator(
-        toOriginalNodeIdFromDotString,
-        " "
-      )
-      const toCallableAndTaskNameObj = separateCallableAndTaskName(
-        isolatedToNodeName
-      )
-
-      const toNodeId = buildNodeIdFromDot(
+      parseAndSetNodeData(
+        graphMap,
+        idToNodeObj,
+        parentId,
         workflowId,
-        toCallableAndTaskNameObj.taskName
+        toOriginalNodeIdFromDotString
       )
-      const toNodeName = toCallableAndTaskNameObj.taskName
-      checkIfNodeIsAdded(
-        graphMap,
-        idToNodeObj,
-        fromNodeId,
-        fromNodeName,
-        fromCallableAndTaskNameObj.callable,
-        parentId
-      )
-      setParent(fromNodeId, parentId, idToNodeObj)
 
-      checkIfNodeIsAdded(
-        graphMap,
-        idToNodeObj,
-        toNodeId,
-        toNodeName,
-        toCallableAndTaskNameObj.callable,
-        parentId
+      addEdgeToGraph(
+        fromOriginalNodeIdFromDotString,
+        toOriginalNodeIdFromDotString,
+        workflowId,
+        graphMap
       )
-      setParent(toNodeId, parentId, idToNodeObj)
-
-      graphMap[fromNodeId].push(toNodeId)
     } else if (child.type === "subgraph") {
       if (child.id.includes("cluster")) {
         const parentNameArray = lookForParentNames(child.children)
         const firstParentName = parentNameArray[0]
+        const variableType = findStringBeforeSeparator(firstParentName, " ")
         const isolatefirstParentName = findStringAfterSeparator(
           firstParentName,
           " "
         )
-        // const firstParentId = `${workflowId}>${isolatefirstParentName}`
 
         const firstParentId = buildNodeIdFromDot(
           workflowId,
@@ -189,7 +234,8 @@ const iterateChildArray = (
           firstParentId,
           firstParentName,
           null,
-          parentId
+          parentId,
+          variableType
         )
 
         idToNodeObj[firstParentId].isParent = true

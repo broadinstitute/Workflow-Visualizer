@@ -7,6 +7,7 @@ export const initializeNodesJSON = idToNodeMap => {
     const nodeName = idToNodeMap[nodeId].name // should try to write the json shit
     const nodeParent = idToNodeMap[nodeId].directParent
     const isParent = idToNodeMap[nodeId].isParent
+    const variableClass = idToNodeMap[nodeId].variableClass
     let singleNodeJSON
     const callable = idToNodeMap[nodeId].callableName
     if (isParent) {
@@ -16,7 +17,8 @@ export const initializeNodesJSON = idToNodeMap => {
           name: nodeName,
           parent: nodeParent,
           type: "parent",
-          callableName: callable
+          callableName: callable,
+          variableClass: variableClass
         }
       }
     } else {
@@ -26,7 +28,8 @@ export const initializeNodesJSON = idToNodeMap => {
           name: nodeName,
           parent: nodeParent,
           type: "single-task",
-          callableName: callable
+          callableName: callable,
+          variableClass: variableClass
         }
       }
     }

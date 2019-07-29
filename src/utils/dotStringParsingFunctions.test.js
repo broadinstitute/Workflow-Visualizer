@@ -74,7 +74,8 @@ test("parseChildArray: single node child array", () => {
         directParent: null,
         id: "nested_subworkflows_4>subN1",
         isParent: false,
-        name: "subN1"
+        name: "subN1",
+        variableClass: "call"
       }
     }
   }
@@ -101,7 +102,8 @@ test("parseChildArray: no attribute array. Other typical input", () => {
         directParent: null,
         id: "nested_subworkflows_4>subN1",
         isParent: false,
-        name: "subN1"
+        name: "subN1",
+        variableClass: "call"
       }
     }
   }
@@ -128,7 +130,8 @@ test("parseChildArray: single node child array. Lacks a 'call' within name. But 
         directParent: null,
         id: "nested_subworkflows_4>subN1",
         isParent: false,
-        name: "subN1"
+        name: "subN1",
+        variableClass: ""
       }
     }
   }
@@ -147,14 +150,16 @@ test("readDotFile: sub3 dot file. Testing that scatter (iu) will only show one e
         directParent: null,
         id: "sub3>(iu)",
         isParent: true,
-        name: "scatter (iu)"
+        name: "scatter (iu)",
+        variableClass: "scatter"
       },
       "sub3>increment": {
         callableName: "increment",
         directParent: "sub3>(iu)",
         id: "sub3>increment",
         isParent: false,
-        name: "increment"
+        name: "increment",
+        variableClass: "call"
       }
     }
   }
@@ -185,35 +190,40 @@ test("readDotFile: array_scatter_gather_3_series", () => {
         directParent: "arrays_scatters_if_three_series>(table)",
         id: "arrays_scatters_if_three_series>(length(row) == 2)",
         isParent: true,
-        name: "if (length(row) == 2)"
+        name: "if (length(row) == 2)",
+        variableClass: "if"
       },
       "arrays_scatters_if_three_series>(table)": {
         callableName: null,
         directParent: null,
         id: "arrays_scatters_if_three_series>(table)",
         isParent: true,
-        name: "scatter (table)"
+        name: "scatter (table)",
+        variableClass: "scatter"
       },
       "arrays_scatters_if_three_series>printOne": {
         callableName: "",
         directParent: "arrays_scatters_if_three_series>(table)",
         id: "arrays_scatters_if_three_series>printOne",
         isParent: false,
-        name: "printOne"
+        name: "printOne",
+        variableClass: "call"
       },
       "arrays_scatters_if_three_series>printThree": {
         callableName: "",
         directParent: "arrays_scatters_if_three_series>(table)",
         id: "arrays_scatters_if_three_series>printThree",
         isParent: false,
-        name: "printThree"
+        name: "printThree",
+        variableClass: "call"
       },
       "arrays_scatters_if_three_series>printTwo": {
         callableName: "",
         directParent: "arrays_scatters_if_three_series>(table)",
         id: "arrays_scatters_if_three_series>printTwo",
         isParent: false,
-        name: "printTwo"
+        name: "printTwo",
+        variableClass: "call"
       }
     }
   }
