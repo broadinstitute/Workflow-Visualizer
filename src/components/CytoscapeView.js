@@ -1,5 +1,7 @@
 import React, { Component } from "react"
 import cytoscape from "cytoscape"
+import dagre from "cytoscape-dagre"
+import klay from "cytoscape-klay"
 
 const cyStyle = {
   height: "800px",
@@ -73,7 +75,7 @@ const conf = {
     }
   ],
   layout: {
-    name: "grid",
+    name: "dagre",
     rows: 1
   }
 }
@@ -87,6 +89,8 @@ class CytoscapeView extends Component {
   }
 
   componentDidMount() {
+    cytoscape.use(dagre)
+    cytoscape.use(klay)
     conf.container = this.cyelement.current
     const cy1 = cytoscape(conf)
 

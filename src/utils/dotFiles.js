@@ -39,3 +39,11 @@ export const sub3 =
   'digraph sub3 { compound=true; subgraph cluster_0 { "call increment&increment" "scatter (iu)" [shape=plaintext] } }'
 export const sub1 =
   'digraph sub1 { compound=true; "call increment&increment" -> "call sub2.sub2&subN2" "call sub2.sub2&subN2" subgraph cluster_0 { "call increment&increment" "scatter (is)" [shape=plaintext] } }'
+export const if_two_series_scatter =
+  'digraph arrays_scatters_if_three_series { compound=true; "call printInt&printOne" -> "call printInt&printTwo" subgraph cluster_0 { subgraph cluster_1 { "call printInt&printOne" "call printInt&printTwo" "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'
+export const two_purple_nodes =
+  'digraph aliased_subworkflows { compound=true; "call subworkflow.subwf&subwfT" -> "Array[Int] fs" "Array[Int] fs" -> "call subworkflow.subwf&subwfF" "call subworkflow.subwf&subwfF" -> "Array[Int] gs" "call subworkflow.subwf&subwfT" "Array[Int] fs" "call subworkflow.subwf&subwfF" "Array[Int] gs" }'
+export const purple_neighbors =
+  'digraph aliased_subworkflows { compound=true; "call subworkflow.subwf&subwfT" -> "Array[Int] fs" "Array[Int] fs" -> "Array[Int] gs" "Array[Int] gs" -> "call subworkflow.subwf&subwfF" "call subworkflow.subwf&subwfT" "Array[Int] fs" "Array[Int] gs" "call subworkflow.subwf&subwfF" }'
+export const if_two_series_scatter_fail =
+  'digraph arrays_scatters_if_three_series { compound=true; "call printInt&printOne" -> "call printInt&printTwo" subgraph cluster_0 { subgraph cluster_1 { "call printInt&printOne" "call printInt&printTwo" "if (length(row) == 2)" [shape=plaintext] } "scatter (table)" [shape=plaintext] } }'

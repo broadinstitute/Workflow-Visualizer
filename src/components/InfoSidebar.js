@@ -1,5 +1,6 @@
 import React, { Component } from "react"
 import "../InfoSidebar.css"
+import ReactLoading from "react-loading"
 
 function SingleColorStatus(props) {
   const circleStyle = {
@@ -44,15 +45,19 @@ function RenderInfoSidebarUI(props) {
   return (
     <div className="detailed-node-div">
       <h3>Close View</h3>
-      <select value={props.currentSelectValue} onChange={props.changeLayout}>
-        <option value="cose">Cose</option>
+
+      <select value={props.layout} onChange={props.changeLayout}>
         <option value="breadthfirst">Breadthfirst</option>
         <option value="circle">Circle</option>
         <option value="grid">Grid</option>
         <option value="random">Random</option>
+        <option value="dagre">Left Right DAG</option>
+        <option value="klay">Klay</option>
       </select>
 
       <button onClick={props.toggleView}>{props.buttonText}</button>
+
+      <button onClick={props.fitFnc}>Fit</button>
 
       <p>
         You've selected node <strong>"{props.selectedNode}"</strong>
@@ -65,7 +70,11 @@ function RenderInfoSidebarUI(props) {
       <p>
         Start Time: {props.startTime} | End Time: {props.endTime}
       </p>
-      <p>Status: {props.currentStatus}</p>
+      <div>
+        <p>Status: {props.currentStatus} </p>
+
+        {props.loader}
+      </div>
 
       <ColorStatusList />
     </div>
@@ -76,17 +85,11 @@ class InfoSidebar extends Component {
   constructor(props) {
     super(props)
 
-    this.state = {
-      currentSelectValue: "circle"
-    }
     this.changeLayout = this.changeLayout.bind(this)
   }
 
   changeLayout(event) {
-    this.setState({
-      currentSelectValue: event.target.value
-    })
-    this.props.chooseLayout(event.target.value)
+    this.props.changeLayout(event.target.value)
   }
 
   render() {
@@ -100,6 +103,11 @@ class InfoSidebar extends Component {
       startWorkflow = this.props.metadata.start
       endWorkflow = this.props.metadata.end
       currentStatus = this.props.metadata.status
+    }
+
+    let loader = null
+    if (currentStatus === "Submitted" || currentStatus === "Running") {
+      loader = <ReactLoading type="bars" color="blue" height={30} width={30} />
     }
 
     let displayName = null
@@ -118,7 +126,7 @@ class InfoSidebar extends Component {
       <RenderInfoSidebarUI
         selectedNode={displayName}
         data={displayData}
-        currentSelectValue={this.state.currentSelectValue}
+        layout={this.props.layout}
         changeLayout={this.changeLayout}
         workflowID={id}
         startTime={startWorkflow}
@@ -126,6 +134,8 @@ class InfoSidebar extends Component {
         currentStatus={currentStatus}
         toggleView={this.props.toggleViewFnc}
         buttonText={buttonText}
+        fitFnc={this.props.fitFnc}
+        loader={loader}
       />
     )
   }
