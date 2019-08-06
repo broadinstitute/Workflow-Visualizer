@@ -18,9 +18,12 @@ import {
   returnDataDictionary,
   returnFlattenedMetadataDictionary
 } from "../utils/metadataFunctions"
-import CytoscapeView from "./CytoscapeView"
 import DetailedNodeView from "./InfoSidebar"
 import * as layoutOptions from "../utils/layoutOptions"
+import CytoscapeComponent from "react-cytoscapejs"
+import dagre from "cytoscape-dagre"
+import klay from "cytoscape-klay"
+import cytoscape from "cytoscape"
 
 let workflowIdMetadata
 
@@ -46,8 +49,7 @@ class MainGraphView extends Component {
   }
 
   fit = () => {
-    const cy = this.graph.current.getCy()
-    cy.fit()
+    this.cy.fit()
   }
 
   isScatter = nodeArray => {
@@ -63,10 +65,9 @@ class MainGraphView extends Component {
   }
 
   createHiddenNodesData = (removedNodeId, incomingNodeId, outgoingNodeId) => {
-    const cy = this.graph.current.getCy()
     // this is for hidden nodes field
     const edgeToIncomingNodeId = buildEdgeText(incomingNodeId, removedNodeId)
-    const edgeToIncomingNode = cy.getElementById(edgeToIncomingNodeId)
+    const edgeToIncomingNode = this.cy.getElementById(edgeToIncomingNodeId)
 
     const incomingJson = edgeToIncomingNode.data("hiddenNodes")
     let incomingHiddenNodes
@@ -77,7 +78,7 @@ class MainGraphView extends Component {
     }
 
     const edgeToOutgoingNodeId = buildEdgeText(removedNodeId, outgoingNodeId)
-    const edgeToOutgoingNode = cy.getElementById(edgeToOutgoingNodeId)
+    const edgeToOutgoingNode = this.cy.getElementById(edgeToOutgoingNodeId)
 
     const outgoingJson = edgeToOutgoingNode.data("hiddenNodes")
     let outgoingHiddenNodes
@@ -98,14 +99,13 @@ class MainGraphView extends Component {
   }
 
   updateRemovedNodeDataScratch = (removedNodeId, removedNodeData) => {
-    const cy = this.graph.current.getCy()
     // check if dictionary is initialized. If not, make it. If yes, get it into an object.
-    const removedNodeJson = cy.scratch("removedNodes")
+    const removedNodeJson = this.cy.scratch("removedNodes")
     const removedNodeDict = JSON.parse(removedNodeJson)
 
     removedNodeDict[removedNodeId] = removedNodeData
     const updatedRemovedNodeJson = JSON.stringify(removedNodeDict)
-    cy.scratch("removedNodes", updatedRemovedNodeJson)
+    this.cy.scratch("removedNodes", updatedRemovedNodeJson)
   }
 
   createBasicScatterEdges = (
@@ -169,18 +169,16 @@ class MainGraphView extends Component {
   }
 
   createBasicView = () => {
-    const cy = this.graph.current.getCy()
-
-    const removedNodeJson = cy.scratch("removedNodes")
+    const removedNodeJson = this.cy.scratch("removedNodes")
     if (removedNodeJson === undefined) {
-      cy.scratch("removedNodes", "{}")
+      this.cy.scratch("removedNodes", "{}")
     }
 
-    // const nodesOnlyInAdvancedViewCollection = cy.nodes(
+    // const nodesOnlyInAdvancedViewCollection = this.cy.nodes(
     //   '[variableClass != "call"][variableClass != "scatter"][variableClass != "if"][type != "shard"]'
     // )
 
-    const filterNonParents = cy.nodes('[type != "parent"]')
+    const filterNonParents = this.cy.nodes('[type != "parent"]')
     const nodesOnlyInAdvancedViewCollection = filterNonParents.filter(
       "[^status]"
     )
@@ -217,7 +215,7 @@ class MainGraphView extends Component {
       }
 
       // remove node now.
-      cy.remove(node)
+      this.cy.remove(node)
       // update scratch
       this.updateRemovedNodeDataScratch(removedNodeId, removedNodeData)
     })
@@ -233,8 +231,7 @@ class MainGraphView extends Component {
   }
 
   addRemovedNodes = () => {
-    const cy = this.graph.current.getCy()
-    const removedNodeString = cy.scratch("removedNodes")
+    const removedNodeString = this.cy.scratch("removedNodes")
     const removedNodeDict = JSON.parse(removedNodeString)
 
     const addedNodesJson = this.generateNodeJson(removedNodeDict)
@@ -242,26 +239,24 @@ class MainGraphView extends Component {
     const nodesJsonObj = {}
     nodesJsonObj["nodes"] = addedNodesJson
 
-    cy.batch(() => {
-      cy.add(nodesJsonObj)
+    this.cy.batch(() => {
+      this.cy.add(nodesJsonObj)
     })
 
     // updated scratch 'removedNodes'. It should be empty now since all nodes are added back.
     const stringifyEmptyDict = JSON.stringify({})
-    cy.scratch("removedNodes", stringifyEmptyDict)
+    this.cy.scratch("removedNodes", stringifyEmptyDict)
   }
 
   createDetailedView = () => {
-    const cy = this.graph.current.getCy()
-
-    const removedNodeJson = cy.scratch("removedNodes")
+    const removedNodeJson = this.cy.scratch("removedNodes")
     if (removedNodeJson === undefined) {
-      cy.scratch("removedNodes", "{}")
+      this.cy.scratch("removedNodes", "{}")
     }
 
     this.addRemovedNodes()
 
-    const collection = cy.edges().filter("[hiddenNodes]")
+    const collection = this.cy.edges().filter("[hiddenNodes]")
     const edgesWithHiddenNodes = this.parseCollectionToArray(collection)
     const edgeJson = []
     edgesWithHiddenNodes.forEach(edge => {
@@ -337,17 +332,15 @@ class MainGraphView extends Component {
   }
 
   doesNodeExist = nodeId => {
-    const cy = this.graph.current.getCy()
-    const nodeObj = cy.getElementById(nodeId)
+    const nodeObj = this.cy.getElementById(nodeId)
     return nodeObj.length !== 0
   }
 
   updateNodeStatus = metadata => {
-    const cy = this.graph.current.getCy()
     const statusDictionary = returnDataDictionary(metadata)
     Object.keys(statusDictionary).forEach(nodeId => {
       if (this.doesNodeExist(nodeId)) {
-        const nodeObj = cy.getElementById(nodeId)
+        const nodeObj = this.cy.getElementById(nodeId)
         const dataObj = statusDictionary[nodeId]
         const status = dataObj["status"]
         const parentType = dataObj["parentType"]
@@ -358,20 +351,18 @@ class MainGraphView extends Component {
   }
 
   batchAddEdges = edgesArray => {
-    const cy = this.graph.current.getCy()
     if (edgesArray.length > 0) {
       const edgesJSONObj = {}
       edgesJSONObj["edges"] = edgesArray
 
-      cy.batch(() => {
-        cy.add(edgesJSONObj)
+      this.cy.batch(() => {
+        this.cy.add(edgesJSONObj)
       })
     }
   }
 
   expandSubworkflow = subworkflowNodeId => {
-    const cy = this.graph.current.getCy()
-    const subworkflowNodeObj = cy.getElementById(subworkflowNodeId)
+    const subworkflowNodeObj = this.cy.getElementById(subworkflowNodeId)
 
     api.fetchMetadata(workflowIdMetadata).then(jsonMetadata => {
       this.setState({
@@ -397,7 +388,7 @@ class MainGraphView extends Component {
       )
 
       const subworkflowJSON = this.drawDirectedGraph(graphAndIdToNodeMapObj)
-      cy.add(subworkflowJSON)
+      this.cy.add(subworkflowJSON)
 
       this.updateSelectedNodeData(subworkflowNodeObj.data())
 
@@ -473,8 +464,7 @@ class MainGraphView extends Component {
   }
 
   collapseParent = selectedParentNodeId => {
-    const cy = this.graph.current.getCy()
-    const parentNode = cy.getElementById(selectedParentNodeId)
+    const parentNode = this.cy.getElementById(selectedParentNodeId)
     parentNode.data("type", "single-task")
 
     const descendantsCollection = parentNode.descendants()
@@ -496,13 +486,12 @@ class MainGraphView extends Component {
   }
 
   scatter = scatterParentNodeId => {
-    const cy = this.graph.current.getCy()
     api.fetchMetadata(workflowIdMetadata).then(jsonMetadata => {
       this.setState({
         metadata: jsonMetadata
       })
 
-      const scatterParentNode = cy.getElementById(scatterParentNodeId)
+      const scatterParentNode = this.cy.getElementById(scatterParentNodeId)
       scatterParentNode.data("type", "parent")
 
       const completeMetadataDict = returnFlattenedMetadataDictionary(
@@ -510,7 +499,8 @@ class MainGraphView extends Component {
       )
 
       const scatterMetadataObj = completeMetadataDict[scatterParentNodeId]
-      cy.batch(function() {
+      const cy = this.cy
+      this.cy.batch(function() {
         scatterMetadataObj.forEach(shard => {
           const shardId = createShardId(scatterParentNodeId, shard)
           const shardName = `shard_${shard.shardIndex}`
@@ -536,8 +526,7 @@ class MainGraphView extends Component {
   }
 
   removeSingleEdge = edgeId => {
-    const cy = this.graph.current.getCy()
-    const removeEdgeObj = cy.getElementById(edgeId)
+    const removeEdgeObj = this.cy.getElementById(edgeId)
     removeEdgeObj.remove()
   }
 
@@ -567,14 +556,13 @@ class MainGraphView extends Component {
     childrenWithoutIncomingEdges,
     parentNode
   ) => {
-    const cy = this.graph.current.getCy()
     const parentId = parentNode.id()
     const edgeArray = []
     listOfIncomingNodes.forEach(incomingNodeId => {
-      const incomingNode = cy.getElementById(incomingNodeId)
+      const incomingNode = this.cy.getElementById(incomingNodeId)
       // Get hiddenNode data from edge and then remove edge from incomingNode to parent
       const edgeToBeRemovedId = buildEdgeText(incomingNodeId, parentId)
-      const edgeObj = cy.getElementById(edgeToBeRemovedId)
+      const edgeObj = this.cy.getElementById(edgeToBeRemovedId)
       const hiddenNodes = edgeObj.data("hiddenNodes")
       this.removeSingleEdge(edgeToBeRemovedId)
 
@@ -607,14 +595,14 @@ class MainGraphView extends Component {
     parentNode
   ) => {
     const edgeArray = []
-    const cy = this.graph.current.getCy()
+
     const parentId = parentNode.id()
     listOfOutgoingNodes.forEach(outgoingNodeId => {
-      const outgoingNode = cy.getElementById(outgoingNodeId)
+      const outgoingNode = this.cy.getElementById(outgoingNodeId)
 
       // remove edge from parent to outgoingNode
       const edgeToBeRemovedId = buildEdgeText(parentId, outgoingNodeId)
-      const edgeObj = cy.getElementById(edgeToBeRemovedId)
+      const edgeObj = this.cy.getElementById(edgeToBeRemovedId)
       const hiddenNodes = edgeObj.data("hiddenNodes")
       this.removeSingleEdge(edgeToBeRemovedId)
 
@@ -693,8 +681,8 @@ class MainGraphView extends Component {
    */
 
   distributeParentEdges = () => {
-    const cy = this.graph.current.getCy()
-    const parentCollection = cy.nodes().filter('[type = "parent"]')
+    const blah = this.cy.nodes()
+    const parentCollection = this.cy.nodes().filter('[type = "parent"]')
     // const edgesArray = []
 
     const parentObjArray = this.parseCollectionToArray(parentCollection)
@@ -709,8 +697,8 @@ class MainGraphView extends Component {
     // const edgesJSONObj = {}
     // edgesJSONObj["edges"] = edgesArray
 
-    // cy.batch(() => {
-    //   cy.add(edgesJSONObj)
+    // this.cy.batch(() => {
+    //   this.cy.add(edgesJSONObj)
     // })
 
     this.batchAddEdges(edgesArray)
@@ -760,7 +748,6 @@ class MainGraphView extends Component {
     this.setState({
       layout: layoutType
     })
-    const cy = this.graph.current.getCy()
 
     let options = {
       name: layoutType,
@@ -785,21 +772,22 @@ class MainGraphView extends Component {
       options = layoutOptions.klayOptions
     }
 
-    cy.layout(options).run()
+    this.cy.layout(options).run()
   }
 
   componentDidMount() {
-    const cy = this.graph.current.getCy()
+    cytoscape.use(dagre)
+    cytoscape.use(klay)
 
     this.distributeParentEdges()
 
-    cy.on("tapend", "node", evt => {
+    this.cy.on("tapend", "node", evt => {
       const node = evt.target
       const nodeData = node.data()
       this.updateSelectedNodeData(nodeData)
     })
 
-    cy.on("cxttapend", "node[parentType = 'scatterParent']", evt => {
+    this.cy.on("cxttapend", "node[parentType = 'scatterParent']", evt => {
       const node = evt.target
       const nodeId = node.id()
       if (node.data("type") !== "parent") {
@@ -810,9 +798,7 @@ class MainGraphView extends Component {
       }
     })
 
-    // I do an api call to try to simulate the delay that an actual call would cause. The code is
-    // a little hacky as a result.
-    cy.on("cxttapend", 'node[parentType = "subworkflow"]', evt => {
+    this.cy.on("cxttapend", 'node[parentType = "subworkflow"]', evt => {
       const node = evt.target
       const nodeId = node.id()
       if (node.data("type") !== "parent") {
@@ -821,29 +807,100 @@ class MainGraphView extends Component {
         this.collapseParent(nodeId)
       }
     })
-
     this.changeLayout(this.state.layout)
   }
 
   updateToLatestWorkflowId = () => {
-    api.queryWorkflows().then(response => {
-      const id = response.results[0].id
-      workflowIdMetadata = id
-    })
+    api
+      .queryWorkflows()
+      .then(response => {
+        const id = response.results[0].id
+        workflowIdMetadata = id
+      })
+      .catch(err => {
+        console.warn(err)
+        workflowIdMetadata = null
+      })
   }
 
   render() {
+    const cytoscapeGraphStyle = [
+      {
+        selector: "node",
+        style: {
+          shape: "circle",
+          "background-color": function(ele) {
+            const nodeData = ele.data()
+            switch (nodeData.status) {
+              case "Done":
+                return "#000000"
+              case "Running":
+                return "#00b200"
+              case "Failed":
+                return "#ff0000"
+              default:
+                return "#bf00ff"
+            }
+          },
+          content: "data(name)",
+          "text-valign": "bottom",
+          width: 100,
+          height: 100,
+          opacity: 0.95
+        }
+      },
+      {
+        selector: "edge",
+        style: {
+          "curve-style": "bezier",
+          width: 8,
+          "line-color": "#97CAEF",
+          "target-arrow-color": "#97CAEF",
+          "source-arrow-color": "#97CAEF",
+          "target-arrow-shape": "triangle"
+        }
+      },
+      {
+        selector: "node:parent",
+        style: {
+          label: "data(name)",
+          "border-width": 0.5,
+          "border-color": "black",
+          "background-color": "#A9A9A9",
+          "background-opacity": 0.222
+        }
+      },
+      {
+        selector: "node[parentType = 'scatterParent']",
+        style: {
+          shape: "star"
+        }
+      },
+      {
+        selector: "node[parentType = 'subworkflow']",
+        style: {
+          shape: "triangle"
+        }
+      }
+    ]
+
+    const style = { width: "100%", height: "800px", borderStyle: "solid" }
     const graphAndIdToNodeMapObj = readDotString(currentDotFile)
-    const elementsJSON = this.drawDirectedGraph(graphAndIdToNodeMapObj)
+    const elementsObj = this.drawDirectedGraph(graphAndIdToNodeMapObj)
+
     this.updateToLatestWorkflowId()
 
     return (
       <div className="flexbox-container">
-        <CytoscapeView
-          className="cyto-model"
-          ref={this.graph}
-          elements={elementsJSON}
+        <CytoscapeComponent
+          stylesheet={cytoscapeGraphStyle}
+          elements={CytoscapeComponent.normalizeElements(elementsObj)}
+          style={style}
+          cy={cy => {
+            this.cy = cy
+          }}
         />
+
         <DetailedNodeView
           className="node-view"
           currentSelectedNodeData={this.state.currentSelectedNodeData}
