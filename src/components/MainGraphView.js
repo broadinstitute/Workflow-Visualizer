@@ -681,7 +681,6 @@ class MainGraphView extends Component {
    */
 
   distributeParentEdges = () => {
-    const blah = this.cy.nodes()
     const parentCollection = this.cy.nodes().filter('[type = "parent"]')
     // const edgesArray = []
 
