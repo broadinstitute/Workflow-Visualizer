@@ -6,7 +6,7 @@
 export const breadthfirstOptions = {
   name: "breadthfirst",
 
-  fit: true, // whether to fit the viewport to the graph
+  fit: false, // whether to fit the viewport to the graph
   directed: true, // whether the tree is directed downwards (or edges can point in any direction if false)
   padding: 30, // padding on fit
   circle: false, // put depths in concentric circles if true, put depths top down if false
@@ -33,7 +33,7 @@ export const breadthfirstOptions = {
 export const gridOptions = {
   name: "grid",
 
-  fit: true, // whether to fit the viewport to the graph
+  fit: false, // whether to fit the viewport to the graph
   padding: 30, // padding used on fit
   boundingBox: undefined, // constrain layout bounds; { x1, y1, x2, y2 } or { x1, y1, w, h }
   avoidOverlap: true, // prevents node overlap, may overflow boundingBox if not enough space
@@ -61,7 +61,7 @@ export const gridOptions = {
 export const randomOptions = {
   name: "random",
 
-  fit: true, // whether to fit to viewport
+  fit: false, // whether to fit to viewport
   padding: 30, // fit padding
   boundingBox: undefined, // constrain layout bounds; { x1, y1, x2, y2 } or { x1, y1, w, h }
   animate: true, // whether to transition the node positions
@@ -80,7 +80,7 @@ export const randomOptions = {
 export const cirlceOptions = {
   name: "circle",
 
-  fit: true, // whether to fit the viewport to the graph
+  fit: false, // whether to fit the viewport to the graph
   padding: 30, // the padding on fit
   boundingBox: undefined, // constrain layout bounds; { x1, y1, x2, y2 } or { x1, y1, w, h }
   avoidOverlap: true, // prevents node overlap, may overflow boundingBox and radius if not enough space
@@ -141,7 +141,7 @@ export const dagreOptions = {
 export const klayOptions = {
   name: "dagre",
   nodeDimensionsIncludeLabels: false, // Boolean which changes whether label dimensions are included when calculating node dimensions
-  fit: true, // Whether to fit
+  fit: false, // Whether to fit
   avoidOverlap: true,
   padding: 20, // Padding on fit
   animate: true, // Whether to transition the node positions

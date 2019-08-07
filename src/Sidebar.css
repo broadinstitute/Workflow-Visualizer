@@ -1,0 +1,70 @@
+.sidebar-div {
+  height: 100%;
+  width: 30%;
+  background: white;
+  padding: 0px 0px 5px 0px;
+  overflow: hidden;
+  word-wrap: break-word;
+}
+
+#circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: grey;
+}
+
+#triangle {
+  width: 0;
+  height: 0;
+  border-left: 25px solid transparent;
+  border-right: 25px solid transparent;
+  border-bottom: 50px solid grey;
+}
+
+#star {
+  margin: 15px 0;
+  position: relative;
+  display: block;
+  color: grey;
+  width: 0px;
+  height: 0px;
+  border-right: 30px solid transparent;
+  border-bottom: 21px solid grey;
+  border-left: 30px solid transparent;
+  transform: rotate(35deg);
+}
+#star:before {
+  border-bottom: 24px solid grey;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  position: absolute;
+  height: 0;
+  width: 0;
+  top: -13.5px;
+  left: -19.5px;
+  display: block;
+  content: "";
+  transform: rotate(-35deg);
+}
+#star:after {
+  position: absolute;
+  display: block;
+  color: grey;
+  top: 0.9px;
+  left: -31.5px;
+  width: 0px;
+  height: 0px;
+  border-right: 30px solid transparent;
+  border-bottom: 21px solid grey;
+  border-left: 30px solid transparent;
+  transform: rotate(-70deg);
+  content: "";
+}
+
+#rectangle {
+  width: 75px;
+  height: 50px;
+  background: grey;
+  opacity: 0.222;
+}

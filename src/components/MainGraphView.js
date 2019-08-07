@@ -18,7 +18,8 @@ import {
   returnDataDictionary,
   returnFlattenedMetadataDictionary
 } from "../utils/metadataFunctions"
-import DetailedNodeView from "./InfoSidebar"
+
+import Sidebar from "./Sidebar"
 import * as layoutOptions from "../utils/layoutOptions"
 import CytoscapeComponent from "react-cytoscapejs"
 import dagre from "cytoscape-dagre"
@@ -35,11 +36,12 @@ class MainGraphView extends Component {
     this.state = {
       currentSelectedNodeData: null,
       metadata: null,
-      isBasicView: false,
-      layout: "grid"
+      isDetailedView: true,
+      layout: "dagre",
+      enforceFit: true,
+      enforceLayout: true,
+      enableAnimation: true
     }
-
-    this.graph = React.createRef()
 
     this.updateSelectedNodeData = this.updateSelectedNodeData.bind(this)
     this.changeLayout = this.changeLayout.bind(this)
@@ -48,8 +50,68 @@ class MainGraphView extends Component {
     this.drawDirectedGraph = this.drawDirectedGraph.bind(this)
   }
 
-  fit = () => {
+  forceFit = () => {
     this.cy.fit()
+  }
+
+  forceLayout = () => {
+    this.changeLayout(this.state.layout)
+  }
+
+  toggleAnimation = () => {
+    this.setState(prevState => ({
+      enableAnimation: !prevState.enableAnimation
+    }))
+    console.log("animation!!")
+  }
+
+  toggleEnforceLayout = () => {
+    this.setState(prevState => ({
+      enforceLayout: !prevState.enforceLayout
+    }))
+    // if enforceLayout state is currently false, then by activating this function, we want enforce layout enabled.
+    // So we should call enforce layout right now
+    if (!this.state.enforceLayout) {
+      this.forceLayout()
+    }
+  }
+
+  toggleEnforceFit = () => {
+    this.setState(prevState => ({
+      enforceFit: !prevState.enforceFit
+    }))
+
+    // if enforceFit state is currently false, then we are about to change it to true by running this function
+    // So we should call forceFit() right now
+    if (!this.state.enforceFit) {
+      this.forceFit()
+    }
+  }
+
+  enforceLayoutAndFit = () => {
+    if (this.state.enforceLayout) {
+      this.changeLayout(this.state.layout, true)
+    } else if (this.state.enforceFit) {
+      this.forceFit()
+    }
+  }
+
+  toggleViewType = () => {
+    // logic is inverted because this is the state prior to changing
+    // so if state isBasicView = false, then, since in the immediate future it will be true,
+    // cytoscape model should display basicview
+
+    if (this.state.isDetailedView) {
+      this.createBasicView()
+    } else {
+      this.createDetailedView()
+    }
+
+    this.enforceLayoutAndFit()
+
+    this.setState(prevState => ({
+      isDetailedView: !prevState.isDetailedView
+    }))
   }
 
   isScatter = nodeArray => {
@@ -295,23 +357,6 @@ class MainGraphView extends Component {
     this.batchAddEdges(edgeJson)
   }
 
-  toggleViewType = () => {
-    // logic is inverted because this is the state prior to changing
-    // so if state isBasicView = false, then, since in the immediate future it will be true,
-    // cytoscape model should display basicview
-
-    if (this.state.isBasicView) {
-      this.createDetailedView()
-    } else {
-      this.createBasicView()
-    }
-
-    this.setState(prevState => ({
-      isBasicView: !prevState.isBasicView
-    }))
-    console.log("I changed views!")
-  }
-
   updateSelectedNodeData(nodeData) {
     const nodeDataString = JSON.stringify(nodeData)
     this.setState({
@@ -399,6 +444,7 @@ class MainGraphView extends Component {
       for (let i = 0; i < 5; i++) {
         this.distributeParentEdges()
       }
+      this.enforceLayoutAndFit()
     })
   }
 
@@ -482,6 +528,7 @@ class MainGraphView extends Component {
     // after remapping descendent edges/connections back to parent.
     descendantsCollection.remove()
     this.distributeParentEdges()
+    this.enforceLayoutAndFit()
     this.updateSelectedNodeData(parentNode.data())
   }
 
@@ -521,6 +568,7 @@ class MainGraphView extends Component {
       })
 
       this.distributeParentEdges()
+      this.enforceLayoutAndFit()
       this.updateSelectedNodeData(scatterParentNode.data())
     })
   }
@@ -742,15 +790,14 @@ class MainGraphView extends Component {
     return elementsJSONObj
   }
 
-  // Many more options for layouts that are specific per layout type e.g cose, breadthfirst. Something to add later?
-  changeLayout(layoutType) {
+  changeLayout(layoutType, isEnforceCall = false) {
     this.setState({
       layout: layoutType
     })
 
     let options = {
       name: layoutType,
-      fit: true,
+      fit: false,
       animate: true,
       animationDuration: 500,
       animationEasing: undefined,
@@ -769,6 +816,20 @@ class MainGraphView extends Component {
       options = layoutOptions.dagreOptions
     } else if (layoutType === "klay") {
       options = layoutOptions.klayOptions
+    }
+
+    // should layout be animated
+    if (isEnforceCall || !this.state.enableAnimation) {
+      options.animate = false
+    } else {
+      options.animate = true
+    }
+
+    // should layout fit
+    if (this.state.enforceFit) {
+      options.fit = true
+    } else {
+      options.fit = false
     }
 
     this.cy.layout(options).run()
@@ -790,7 +851,6 @@ class MainGraphView extends Component {
       const node = evt.target
       const nodeId = node.id()
       if (node.data("type") !== "parent") {
-        // this.onClickScatter(nodeId)
         this.scatter(nodeId)
       } else {
         this.collapseParent(nodeId)
@@ -806,7 +866,8 @@ class MainGraphView extends Component {
         this.collapseParent(nodeId)
       }
     })
-    this.changeLayout(this.state.layout)
+
+    this.forceLayout()
   }
 
   updateToLatestWorkflowId = () => {
@@ -900,15 +961,21 @@ class MainGraphView extends Component {
           }}
         />
 
-        <DetailedNodeView
-          className="node-view"
+        <Sidebar
           currentSelectedNodeData={this.state.currentSelectedNodeData}
           changeLayout={this.changeLayout}
           metadata={this.state.metadata}
-          toggleViewFnc={this.toggleViewType}
-          isBasicView={this.state.isBasicView}
           layout={this.state.layout}
-          fitFnc={this.fit}
+          fitFnc={this.forceFit}
+          forceLayoutFnc={this.forceLayout}
+          toggleViewFnc={this.toggleViewType}
+          viewBoolean={this.state.isDetailedView}
+          toggleEnforceFitFnc={this.toggleEnforceFit}
+          enforceFitBoolean={this.state.enforceFit}
+          toggleEnforceLayoutFnc={this.toggleEnforceLayout}
+          enforceLayoutBoolean={this.state.enforceLayout}
+          toggleAnimation={this.toggleAnimation}
+          enableAnimation={this.state.enableAnimation}
         />
       </div>
     )
