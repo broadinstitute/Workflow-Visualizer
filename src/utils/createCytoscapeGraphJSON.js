@@ -54,3 +54,16 @@ export const initializeEdgesJSON = graph => {
   })
   return edgesArray
 }
+
+export const returnGraphJson = graphAndIdToNodeMapObj => {
+  const graph = graphAndIdToNodeMapObj.graph
+  const idToNodeMap = graphAndIdToNodeMapObj.idToNodeMap
+
+  const nodesArray = initializeNodesJSON(idToNodeMap)
+  const edgesArray = initializeEdgesJSON(graph)
+
+  const elementsJSONObj = {}
+  elementsJSONObj["nodes"] = nodesArray
+  elementsJSONObj["edges"] = edgesArray
+  return elementsJSONObj
+}

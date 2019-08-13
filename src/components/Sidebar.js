@@ -17,7 +17,10 @@ import {
   FormLabel,
   ExpansionPanel,
   ExpansionPanelSummary,
-  ExpansionPanelDetails
+  ExpansionPanelDetails,
+  Box,
+  InputLabel,
+  FormHelperText
 } from "@material-ui/core"
 import "../Sidebar.css"
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
@@ -27,11 +30,159 @@ import { Done, Error } from "@material-ui/icons"
  * Sidebar presents additional information about the workflow and controls.
  */
 
+const ExpandOptions = props => {
+  return (
+    <Box>
+      <Grid container direction="column" spacing={1}>
+        <Grid item>
+          <Grid container direction="row" alignItems="center" spacing={1}>
+            <Grid item>
+              <Typography>Expand first</Typography>
+            </Grid>
+            <Grid item>
+              <Select
+                value={props.displayLayers}
+                color="primary"
+                onChange={props.changeDisplayedLayers}
+              >
+                <MenuItem value="zero">0</MenuItem>
+                <MenuItem value="one">1</MenuItem>
+                <MenuItem value="two">2</MenuItem>
+                <MenuItem value="three">3</MenuItem>
+                <MenuItem value="four">4</MenuItem>
+                <MenuItem value="five">5</MenuItem>
+                <MenuItem value="all">ALL (∞)</MenuItem>
+                <MenuItem value="smart">smart</MenuItem>
+              </Select>
+            </Grid>
+            <Grid item>
+              <Typography>layers</Typography>
+            </Grid>
+          </Grid>
+        </Grid>
+        <Grid item>
+          <FormGroup row>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  // checked={props.enableAnimation}
+                  // onChange={props.toggleAnimation}
+                  //   value="checkedA"
+                  color="primary"
+                />
+              }
+              label="Expand subworkflows"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  // checked={props.enableAnimation}
+                  // onChange={props.toggleAnimation}
+                  //   value="checkedA"
+                  color="primary"
+                />
+              }
+              label="Expand scatters"
+            />
+          </FormGroup>
+        </Grid>
+      </Grid>
+    </Box>
+  )
+}
+
+const SelectShardDisplay = props => {
+  return (
+    <Box>
+      <Grid container direction="row" alignItems="center" spacing={1}>
+        <Grid item>
+          <Typography>Display</Typography>
+        </Grid>
+        <Grid item>
+          <Select
+            value={props.displayShards}
+            color="primary"
+            onChange={props.changeDisplayedShards}
+          >
+            <MenuItem value="no">no</MenuItem>
+            <MenuItem value="all">all</MenuItem>
+            <MenuItem value="failed">only failed</MenuItem>
+            <MenuItem value="smart">smart</MenuItem>
+          </Select>
+        </Grid>
+        <Grid item>
+          <Typography>shards in a scatter</Typography>
+        </Grid>
+      </Grid>
+    </Box>
+  )
+}
+
+const ColorBlindMode = props => {
+  return (
+    <Box>
+      <FormGroup row>
+        <FormControlLabel
+          control={
+            <Checkbox
+              // checked={props.enableAnimation}
+              // onChange={props.toggleAnimation}
+              //   value="checkedA"
+              color="primary"
+            />
+          }
+          label="Enable color blind mode"
+        />
+      </FormGroup>
+    </Box>
+  )
+}
+
+const AdvancedControls = props => {
+  return (
+    <ExpansionPanel>
+      <ExpansionPanelSummary
+        expandIcon={<ExpandMoreIcon />}
+        aria-controls="panel1a-content"
+        id="panel1a-header"
+      >
+        <Typography color="primary">Advanced Controls</Typography>
+      </ExpansionPanelSummary>
+      <ExpansionPanelDetails>
+        <Grid container direction="column" spacing={2}>
+          <Grid item>
+            <Typography variant="subtitle2">
+              All controls at default are set to smart which automatically
+              adjusts graph display based on the number of nodes in the graph.
+            </Typography>
+          </Grid>
+          <Divider />
+          <Grid item>
+            <ExpandOptions
+              displayLayers={props.displayLayers}
+              changeDisplayedLayers={props.changeDisplayedLayers}
+            />
+          </Grid>
+          <Grid item>
+            <SelectShardDisplay
+              displayShards={props.displayShards}
+              changeDisplayedShards={props.changeDisplayedShards}
+            />
+          </Grid>
+          <Grid item>
+            <ColorBlindMode />
+          </Grid>
+        </Grid>
+      </ExpansionPanelDetails>
+    </ExpansionPanel>
+  )
+}
+
 const ControlPanel = props => {
   return (
     <List>
       <ListItem>
-        <Typography variant="h6" align="center">
+        <Typography variant="h6" align="center" color="primary">
           Job Manager Visualization
         </Typography>
       </ListItem>
@@ -45,25 +196,22 @@ const ControlPanel = props => {
         {/* <ReactLoading type="bars" color="blue" height={30} width={30} /> */}
       </ListItem>
       <ListItem>
-        <Grid container direction="row" alignItems="center" spacing={1}>
-          <Grid item>
-            <Typography>Layout: </Typography>
-          </Grid>
-          <Grid item>
-            <Select
-              value={props.layout}
-              color="primary"
-              onChange={props.changeLayout}
-            >
-              <MenuItem value="breadthfirst">Breadthfirst</MenuItem>
-              <MenuItem value="circle">Circle</MenuItem>
-              <MenuItem value="grid">Grid</MenuItem>
-              <MenuItem value="random">Random</MenuItem>
-              <MenuItem value="dagre">Left Right DAG</MenuItem>
-              <MenuItem value="klay">Klay</MenuItem>
-            </Select>
-          </Grid>
-        </Grid>
+        <FormControl>
+          <InputLabel>Layout</InputLabel>
+          <Select
+            value={props.layout}
+            color="primary"
+            onChange={props.changeLayout}
+          >
+            <MenuItem value="breadthfirst">Breadthfirst</MenuItem>
+            <MenuItem value="circle">Circle</MenuItem>
+            <MenuItem value="grid">Grid</MenuItem>
+            <MenuItem value="random">Random</MenuItem>
+            <MenuItem value="dagre">Left Right DAG</MenuItem>
+            <MenuItem value="klay">Klay</MenuItem>
+          </Select>
+          <FormHelperText>Click to select layout formats</FormHelperText>
+        </FormControl>
       </ListItem>
       <ListItem>
         <FormControl>
@@ -274,6 +422,13 @@ const RenderSidebar = props => {
         toggleAnimation={props.toggleAnimation}
         enableAnimation={props.enableAnimation}
       />
+
+      <AdvancedControls
+        displayLayers={props.displayLayers}
+        changeDisplayedLayers={props.changeDisplayedLayers}
+        displayShards={props.displayShards}
+        changeDisplayedShards={props.changeDisplayedShards}
+      />
       <WorkflowDataExpansionPanel
         workflowId={props.workflowId}
         startTime={props.startTime}
@@ -289,10 +444,20 @@ class Sidebar extends Component {
     super(props)
 
     this.changeLayout = this.changeLayout.bind(this)
+    this.changeDisplayedLayers = this.changeDisplayedLayers.bind(this)
+    this.changeDisplayedShards = this.changeDisplayedShards.bind(this)
   }
 
   changeLayout(event) {
     this.props.changeLayout(event.target.value)
+  }
+
+  changeDisplayedLayers(event) {
+    this.props.changeDisplayedLayers(event.target.value)
+  }
+
+  changeDisplayedShards(event) {
+    this.props.changeDisplayedShards(event.target.value)
   }
 
   render() {
@@ -333,7 +498,7 @@ class Sidebar extends Component {
     }
 
     const status = (
-      <Grid container direction="row" alignItems="center" spacing={5}>
+      <Grid container direction="row" alignItems="center" spacing={1}>
         <Grid item>{statusSymbol}</Grid>
         <Grid item>
           <Typography variant="body2">{statusText}</Typography>
@@ -342,11 +507,9 @@ class Sidebar extends Component {
     )
 
     let displayName = null
-    let displayData = null
     if (this.props.currentSelectedNodeData !== null) {
       const nodeDataObj = JSON.parse(this.props.currentSelectedNodeData)
       displayName = nodeDataObj.id
-      displayData = this.props.currentSelectedNodeData
     }
 
     return (
@@ -355,6 +518,10 @@ class Sidebar extends Component {
         status={status}
         layout={this.props.layout}
         changeLayout={this.changeLayout}
+        displayLayers={this.props.displayLayers}
+        changeDisplayedLayers={this.changeDisplayedLayers}
+        displayShards={this.props.displayShards}
+        changeDisplayedShards={this.changeDisplayedShards}
         workflowId={id}
         startTime={startWorkflow}
         endTime={endWorkflow}
