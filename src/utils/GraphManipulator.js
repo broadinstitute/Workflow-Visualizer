@@ -13,20 +13,23 @@ import {
 export default class GraphManipulator {
   constructor(cy) {
     this.cy = cy
+    cy.scratch("removedNodes", "{}")
   }
 
-  removeAndSaveNodeArray = nodeArray => {
-    nodeArray.forEach(shard => {
-      const parentId = shard.data("parent")
-      const removedData = shard.remove()
-      const shardDict = this.cy.scratch("removedShards")
+  checkIfWholeShardIsRemoved
 
-      if (shardDict[parentId] === undefined) {
-        shardDict[parentId] = []
-      }
+  hideNodeArray = nodeArray => {
+    nodeArray.forEach(node => {
+      node.style("visibility", "hidden")
+      // node.style("display", "none")
+      // console.log(node.style())
+    })
+  }
 
-      const removedList = shardDict[parentId]
-      removedList.push(removedData)
+  displayNodeArray = nodeArray => {
+    nodeArray.forEach(node => {
+      node.style("visibility", "visible")
+      // node.style("display", "element")
     })
   }
 
@@ -36,46 +39,31 @@ export default class GraphManipulator {
     } else if (typeOfDisplay === "no") {
       const allShardCollection = this.cy.filter('node[type="shard"]')
       const allShardList = this.parseCollectionToArray(allShardCollection)
+      this.hideNodeArray(allShardList)
+    } else if (typeOfDisplay === "all") {
+      const allShardsCollection = this.cy.filter('node[type="shard"]')
 
-      this.removeAndSaveNodeArray(allShardList)
-    } else if (typeOfDisplay === "all" || typeOfDisplay === "failed") {
-      // restore all removed shards
+      const allShardsList = this.parseCollectionToArray(allShardsCollection)
 
-      const scatterParentCollection = this.cy
-        .filter("node[parentType = 'scatterParent']")
-        .filter('[type="parent"]')
+      this.displayNodeArray(allShardsList)
+    } else if (typeOfDisplay === "failed") {
+      const nonFailedShardCollection = this.cy
+        .filter('node[type="shard"]')
+        .filter('[status!="Failed"]')
 
-      const scatterParentList = this.parseCollectionToArray(
-        scatterParentCollection
+      const nonFailedShardsList = this.parseCollectionToArray(
+        nonFailedShardCollection
       )
 
-      scatterParentList.forEach(parent => {
-        const parentId = parent.id()
-        const shardDict = this.cy.scratch("removedShards")
+      this.hideNodeArray(nonFailedShardsList)
 
-        const addBackList = shardDict[parentId]
+      const failedShardCollection = this.cy
+        .filter('node[type="shard"]')
+        .filter('[status="Failed"]')
 
-        if (addBackList !== undefined) {
-          addBackList.forEach(singleShardAndItsEdges => {
-            singleShardAndItsEdges.restore()
-          })
+      const failedList = this.parseCollectionToArray(failedShardCollection)
 
-          // reset shardDict value back to empty for this key
-          shardDict[parentId] = []
-        }
-      })
-
-      if (typeOfDisplay === "failed") {
-        const nonFailedShardCollection = this.cy
-          .filter('node[type="shard"]')
-          .filter('[status!="Failed"]')
-
-        const nonFailedShardList = this.parseCollectionToArray(
-          nonFailedShardCollection
-        )
-
-        this.removeAndSaveNodeArray(nonFailedShardList)
-      }
+      this.displayNodeArray(failedList)
     }
   }
 
@@ -727,7 +715,7 @@ export default class GraphManipulator {
    */
 
   distributeParentEdges = () => {
-    const parentCollection = this.cy.nodes().filter('[type = "parent"]')
+    const parentCollection = this.cy.nodes("").filter('[type = "parent"]')
     // const edgesArray = []
 
     const parentObjArray = this.parseCollectionToArray(parentCollection)

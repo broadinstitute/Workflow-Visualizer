@@ -11,6 +11,670 @@ beforeEach(() => {
   }
 })
 
+describe("removeAndSaveNodeArray: ", () => {
+  const mapIdToObject = (array, cy) => {
+    return array.map(id => {
+      return cy.getElementById(id)
+    })
+  }
+
+  test("empty array with a 3 node cy(graph)", () => {
+    const elements = [
+      {
+        // node a
+        data: { id: "a" }
+      },
+      {
+        // node b
+        data: { id: "b" }
+      },
+      { data: { id: "c" } },
+      {
+        // edge ab
+        data: { id: "ba", source: "b", target: "a" }
+      },
+      {
+        // edge ab
+        data: { id: "ac", source: "a", target: "c" }
+      }
+    ]
+    configurations.elements = elements
+
+    const cy = cytoscape(configurations)
+    const graphManipulatorObj = new GraphManipulator(cy)
+    graphManipulatorObj.hideNodeArray([])
+
+    const nodeCollection = cy.nodes()
+    const nodeArray = graphManipulatorObj.parseCollectionToArray(nodeCollection)
+
+    const nodeIdArray = nodeArray.reduce((acc, node) => {
+      const id = node.id()
+      return [...acc, ...[id]]
+    }, [])
+
+    // check nodes
+    expect(nodeIdArray.sort()).toMatchObject(["a", "b", "c"])
+
+    const edgeCollection = cy.edges()
+    const edgeArray = graphManipulatorObj.parseCollectionToArray(edgeCollection)
+
+    const edgeIdArray = edgeArray.reduce((acc, edge) => {
+      const id = edge.id()
+      return [...acc, ...[id]]
+    }, [])
+
+    expect(edgeIdArray.sort()).toMatchObject(["ac", "ba"])
+  })
+
+  // test("single node array; a 3 node cy(graph)", () => {
+  //   const elements = [
+  //     {
+  //       // node a
+  //       data: { id: "a", parentType: "scatterParent", type: "parent" }
+  //     },
+  //     {
+  //       // node b
+  //       data: { id: "b", parent: "a", type: "shard" }
+  //     },
+  //     { data: { id: "c" } },
+  //     {
+  //       // edge ab
+  //       data: { id: "ba", source: "b", target: "a" }
+  //     },
+  //     {
+  //       // edge ab
+  //       data: { id: "ac", source: "a", target: "c" }
+  //     }
+  //   ]
+  //   configurations.elements = elements
+
+  //   const cy = cytoscape(configurations)
+  //   const graphManipulatorObj = new GraphManipulator(cy)
+
+  //   const objectArray = mapIdToObject(["b"], cy)
+
+  //   graphManipulatorObj.hideNodeArray(objectArray)
+
+  //   const nodeCollection = cy.filter("node:visible")
+  //   const nodeArray = graphManipulatorObj.parseCollectionToArray(nodeCollection)
+
+  //   const nodeIdArray = nodeArray.reduce((acc, node) => {
+  //     node.style("display", "none")
+  //     console.log(node.style("display"))
+  //     const id = node.id()
+  //     return [...acc, ...[id]]
+  //   }, [])
+
+  //   // check nodes
+  //   expect(nodeIdArray.sort()).toMatchObject(["a", "c"])
+
+  //   const edgeCollection = cy.edges()
+  //   const edgeArray = graphManipulatorObj.parseCollectionToArray(edgeCollection)
+
+  //   const edgeIdArray = edgeArray.reduce((acc, edge) => {
+  //     const id = edge.id()
+  //     return [...acc, ...[id]]
+  //   }, [])
+
+  //   expect(edgeIdArray.sort()).toMatchObject(["ac"])
+  // })
+})
+
+describe("displayShards: ", () => {
+  const createIdArray = array => {
+    return array.reduce((acc, ele) => {
+      const id = ele.id()
+      return [...acc, ...[id]]
+    }, [])
+  }
+
+  const unrelatedMetadata = {
+    workflowProcessingEvents: [
+      {
+        cromwellId: "cromid-d225c52",
+        description: "Finished",
+        timestamp: "2019-08-14T15:02:47.805Z",
+        cromwellVersion: "42"
+      },
+      {
+        cromwellId: "cromid-d225c52",
+        description: "PickedUp",
+        timestamp: "2019-08-14T15:02:47.772Z",
+        cromwellVersion: "42"
+      }
+    ],
+    actualWorkflowLanguageVersion: "draft-2",
+    submittedFiles: {
+      workflow:
+        'task increment {\n Int i\n command {\n echo $(( ${i} + 1 ))\n }\n output {\n Int j = read_int(stdout())\n }\n runtime {\n docker: "ubuntu:latest"\n }\n}\n\nworkflow subwf {\n Array[Int] is\n scatter (i in is) {\n call increment { input: i = i }\n }\n output {\n Array[Int] js = increment.j\n }\n}',
+      root: "",
+      options: "{\n\n}",
+      inputs: "{}",
+      workflowUrl: "",
+      labels: "{}"
+    },
+    calls: {},
+    outputs: {},
+    actualWorkflowLanguage: "WDL",
+    id: "9849f8c6-579a-4ef8-ad72-ba0bd162f8dc",
+    inputs: {},
+    labels: {
+      "cromwell-workflow-id": "cromwell-9849f8c6-579a-4ef8-ad72-ba0bd162f8dc"
+    },
+    submission: "2019-08-14T15:02:42.192Z",
+    status: "Failed",
+    failures: [
+      {
+        causedBy: [
+          {
+            causedBy: [],
+            message: "Required workflow input 'subwf.is' not specified"
+          }
+        ],
+        message: "Workflow input processing failed"
+      }
+    ],
+    end: "2019-08-14T15:02:47.805Z",
+    start: "2019-08-14T15:02:47.772Z"
+  }
+  test("no shards in graph with 'NO' layout option", () => {
+    const elements = [
+      {
+        // node a
+        data: { id: "a", status: "Done" }
+      },
+      {
+        // node b
+        data: { id: "b", status: "Done" }
+      },
+      { data: { id: "c", status: "Done" } },
+      {
+        // edge ab
+        data: { id: "ba", source: "b", target: "a" }
+      },
+      {
+        // edge ab
+        data: { id: "ac", source: "a", target: "c" }
+      }
+    ]
+    configurations.elements = elements
+
+    const cy = cytoscape(configurations)
+    const graphManipulatorObj = new GraphManipulator(cy)
+
+    graphManipulatorObj.displayShards("no", unrelatedMetadata)
+
+    const nodeCollection = cy.nodes()
+    const nodeArray = graphManipulatorObj.parseCollectionToArray(nodeCollection)
+
+    const nodeIdArray = createIdArray(nodeArray)
+
+    expect(nodeIdArray.sort()).toMatchObject(["a", "b", "c"])
+
+    const edgeIdArray = createIdArray(
+      graphManipulatorObj.parseCollectionToArray(cy.edges())
+    )
+
+    expect(edgeIdArray.sort()).toMatchObject(["ac", "ba"])
+  })
+
+  describe("shards in one parent in graph", () => {
+    let elements
+
+    beforeEach(() => {
+      elements = [
+        {
+          // node a
+          data: {
+            id: "a",
+            status: "Done",
+            type: "parent",
+            parentType: "scatterParent",
+            length: 2
+          }
+        },
+        {
+          // node b
+          data: { id: "b", type: "shard", status: "Failed", parent: "a" }
+        },
+        { data: { id: "c", type: "shard", status: "Done", parent: "a" } },
+        {
+          // edge ab
+          data: { id: "ba", source: "b", target: "a" }
+        },
+        {
+          // edge ab
+          data: { id: "ac", source: "a", target: "c" }
+        }
+      ]
+    })
+
+    // test("'no' layout option", () => {
+    //   configurations.elements = elements
+    //   const cy = cytoscape(configurations)
+    //   const graphManipulatorObj = new GraphManipulator(cy)
+
+    //   graphManipulatorObj.displayShards("no", unrelatedMetadata)
+
+    //   const nodeCollection = cy.nodes()
+    //   const nodeArray = graphManipulatorObj.parseCollectionToArray(
+    //     nodeCollection
+    //   )
+
+    //   const nodeIdArray = createIdArray(nodeArray)
+
+    //   expect(nodeIdArray.sort()).toMatchObject(["a"])
+
+    //   const edgeIdArray = createIdArray(
+    //     graphManipulatorObj.parseCollectionToArray(cy.edges())
+    //   )
+
+    //   expect(edgeIdArray.sort()).toMatchObject([])
+    // })
+
+    // test("'Only Failed' layout option", () => {
+    //   configurations.elements = elements
+    //   const cy = cytoscape(configurations)
+    //   const graphManipulatorObj = new GraphManipulator(cy)
+
+    //   graphManipulatorObj.displayShards("failed", unrelatedMetadata)
+
+    //   const nodeCollection = cy.nodes()
+    //   const nodeArray = graphManipulatorObj.parseCollectionToArray(
+    //     nodeCollection
+    //   )
+
+    //   const nodeIdArray = createIdArray(nodeArray)
+
+    //   expect(nodeIdArray.sort()).toMatchObject(["a", "b"])
+
+    //   const edgeIdArray = createIdArray(
+    //     graphManipulatorObj.parseCollectionToArray(cy.edges())
+    //   )
+
+    //   expect(edgeIdArray.sort()).toMatchObject(["ba"])
+    // })
+
+    test("'all' layout option", () => {
+      configurations.elements = elements
+      const cy = cytoscape(configurations)
+      const graphManipulatorObj = new GraphManipulator(cy)
+
+      graphManipulatorObj.displayShards("all", unrelatedMetadata)
+
+      const nodeCollection = cy.nodes()
+      const nodeArray = graphManipulatorObj.parseCollectionToArray(
+        nodeCollection
+      )
+
+      const nodeIdArray = createIdArray(nodeArray)
+
+      expect(nodeIdArray.sort()).toMatchObject(["a", "b", "c"])
+
+      const edgeIdArray = createIdArray(
+        graphManipulatorObj.parseCollectionToArray(cy.edges())
+      )
+
+      expect(edgeIdArray.sort()).toMatchObject(["ac", "ba"])
+    })
+
+    test("'all' layout option after calling no shards", () => {
+      configurations.elements = elements
+      const cy = cytoscape(configurations)
+      const graphManipulatorObj = new GraphManipulator(cy)
+
+      graphManipulatorObj.displayShards("no", unrelatedMetadata)
+      graphManipulatorObj.displayShards("all", unrelatedMetadata)
+
+      const nodeCollection = cy.nodes()
+      const nodeArray = graphManipulatorObj.parseCollectionToArray(
+        nodeCollection
+      )
+
+      const nodeIdArray = createIdArray(nodeArray)
+
+      expect(nodeIdArray.sort()).toMatchObject(["a", "b", "c"])
+
+      const edgeIdArray = createIdArray(
+        graphManipulatorObj.parseCollectionToArray(cy.edges())
+      )
+
+      expect(edgeIdArray.sort()).toMatchObject(["ac", "ba"])
+    })
+  })
+
+  describe("shards in two parent in graph", () => {
+    let elements
+    beforeEach(() => {
+      elements = [
+        {
+          // node a
+          data: {
+            id: "a",
+            status: "Done",
+            type: "parent",
+            parentType: "scatterParent",
+            length: 2
+          }
+        },
+        {
+          // node b
+          data: { id: "b", type: "shard", status: "Failed", parent: "a" }
+        },
+        { data: { id: "c", type: "shard", status: "Failed", parent: "a" } },
+        {
+          // node a
+          data: {
+            id: "x",
+            status: "Done",
+            type: "parent",
+            parentType: "scatterParent",
+            length: 2
+          }
+        },
+        {
+          // node b
+          data: { id: "y", type: "shard", status: "Running", parent: "x" }
+        },
+        { data: { id: "z", type: "shard", status: "Done", parent: "x" } },
+        {
+          // edge ab
+          data: { id: "ba", source: "b", target: "a" }
+        },
+        {
+          // edge ab
+          data: { id: "ac", source: "a", target: "c" }
+        }
+      ]
+    })
+
+    // test("'no' layout option", () => {
+    //   configurations.elements = elements
+
+    //   const cy = cytoscape(configurations)
+    //   const graphManipulatorObj = new GraphManipulator(cy)
+
+    //   graphManipulatorObj.displayShards("no", unrelatedMetadata)
+
+    //   const nodeCollection = cy.nodes()
+    //   const nodeArray = graphManipulatorObj.parseCollectionToArray(
+    //     nodeCollection
+    //   )
+
+    //   const nodeIdArray = createIdArray(nodeArray)
+
+    //   expect(nodeIdArray.sort()).toMatchObject(["a", "x"])
+
+    //   const edgeIdArray = createIdArray(
+    //     graphManipulatorObj.parseCollectionToArray(cy.edges())
+    //   )
+
+    //   expect(edgeIdArray.sort()).toMatchObject([])
+    // })
+
+    // test("'only failed' layout option", () => {
+    //   configurations.elements = elements
+
+    //   const cy = cytoscape(configurations)
+    //   const graphManipulatorObj = new GraphManipulator(cy)
+
+    //   graphManipulatorObj.displayShards("failed", unrelatedMetadata)
+
+    //   const nodeCollection = cy.nodes()
+    //   const nodeArray = graphManipulatorObj.parseCollectionToArray(
+    //     nodeCollection
+    //   )
+
+    //   const nodeIdArray = createIdArray(nodeArray)
+
+    //   expect(nodeIdArray.sort()).toMatchObject(["a", "b", "c", "x"])
+
+    //   const edgeIdArray = createIdArray(
+    //     graphManipulatorObj.parseCollectionToArray(cy.edges())
+    //   )
+
+    //   expect(edgeIdArray.sort()).toMatchObject(["ac", "ba"])
+    // })
+
+    test("'all' layout option", () => {
+      configurations.elements = elements
+
+      const cy = cytoscape(configurations)
+      const graphManipulatorObj = new GraphManipulator(cy)
+
+      graphManipulatorObj.displayShards("all", unrelatedMetadata)
+
+      const nodeCollection = cy.nodes()
+      const nodeArray = graphManipulatorObj.parseCollectionToArray(
+        nodeCollection
+      )
+
+      const nodeIdArray = createIdArray(nodeArray)
+
+      expect(nodeIdArray.sort()).toMatchObject(["a", "b", "c", "x", "y", "z"])
+
+      const edgeIdArray = createIdArray(
+        graphManipulatorObj.parseCollectionToArray(cy.edges())
+      )
+
+      expect(edgeIdArray.sort()).toMatchObject(["ac", "ba"])
+    })
+
+    test("'all' layout option after removing all shards prior.", () => {
+      configurations.elements = elements
+
+      const cy = cytoscape(configurations)
+      const graphManipulatorObj = new GraphManipulator(cy)
+
+      graphManipulatorObj.displayShards("no", unrelatedMetadata)
+      graphManipulatorObj.displayShards("all", unrelatedMetadata)
+
+      const nodeCollection = cy.nodes()
+      const nodeArray = graphManipulatorObj.parseCollectionToArray(
+        nodeCollection
+      )
+
+      const nodeIdArray = createIdArray(nodeArray)
+
+      expect(nodeIdArray.sort()).toMatchObject(["a", "b", "c", "x", "y", "z"])
+
+      const edgeIdArray = createIdArray(
+        graphManipulatorObj.parseCollectionToArray(cy.edges())
+      )
+
+      expect(edgeIdArray.sort()).toMatchObject(["ac", "ba"])
+    })
+  })
+
+  describe("Hard case: shards in two parents. There is one child node that is not a shard ", () => {
+    let elements
+    beforeEach(() => {
+      elements = [
+        {
+          // node a
+          data: {
+            id: "a",
+            status: "Done",
+            type: "parent",
+            parentType: "scatterParent",
+            length: 2
+          }
+        },
+        {
+          // node b
+          data: { id: "b", type: "shard", status: "Done", parent: "a" }
+        },
+        { data: { id: "c", type: "shard", status: "Done", parent: "a" } },
+        { data: { id: "w", status: "Done", parent: "w" } },
+        {
+          // node a
+          data: {
+            id: "x",
+            status: "Done",
+            type: "parent",
+            parentType: "scatterParent",
+            length: 2
+          }
+        },
+        {
+          // node b
+          data: { id: "y", type: "shard", status: "Done", parent: "x" }
+        },
+        { data: { id: "z", type: "shard", status: "Done", parent: "x" } },
+        {
+          // edge ab
+          data: { id: "by", source: "b", target: "y" }
+        },
+        {
+          // edge ab
+          data: { id: "cz", source: "c", target: "z" }
+        }
+      ]
+      configurations.elements = elements
+    })
+
+    // test("'NO' layout option; check that non-shard child is preserved", () => {
+    //   const cy = cytoscape(configurations)
+    //   const graphManipulatorObj = new GraphManipulator(cy)
+
+    //   graphManipulatorObj.displayShards("no", unrelatedMetadata)
+
+    //   const nodeCollection = cy.nodes()
+    //   const nodeArray = graphManipulatorObj.parseCollectionToArray(
+    //     nodeCollection
+    //   )
+
+    //   const nodeIdArray = createIdArray(nodeArray)
+
+    //   expect(nodeIdArray.sort()).toMatchObject(["a", "w", "x"])
+    // })
+  })
+})
+
+describe("Hard Case displayShards: two scatters: ", () => {
+  let elements
+  beforeEach(() => {
+    elements = [
+      {
+        // node a
+        data: {
+          id: "a",
+          status: "Done",
+          type: "parent",
+          parentType: "scatterParent",
+          length: 2
+        }
+      },
+      {
+        // node b
+        data: {
+          id: "a>shard_0",
+          type: "shard",
+          status: "Done",
+          parent: "a",
+          shardIndex: 0
+        }
+      },
+      {
+        data: {
+          id: "a>shard_1",
+          type: "shard",
+          status: "Done",
+          parent: "a",
+          shardIndex: 1
+        }
+      },
+      {
+        // node a
+        data: {
+          id: "x",
+          status: "Done",
+          type: "parent",
+          parentType: "scatterParent",
+          length: 2
+        }
+      },
+      {
+        // node b
+        data: {
+          id: "x>shard_0",
+          type: "shard",
+          status: "Failed",
+          parent: "x",
+          shardIndex: 0
+        }
+      },
+      {
+        data: {
+          id: "x>shard_1",
+          type: "shard",
+          status: "Failed",
+          parent: "x",
+          shardIndex: 1
+        }
+      },
+      {
+        // edge ab
+        data: { id: "by", source: "b", target: "y" }
+      },
+      {
+        // edge ab
+        data: { id: "cz", source: "c", target: "z" }
+      }
+    ]
+  })
+
+  // test("'no' layout option; check that edges go back to parent if all shards are removed", () => {
+  //   configurations.elements = elements
+  //   const cy = cytoscape(configurations)
+  //   const graphManipulatorObj = new GraphManipulator(cy)
+
+  //   graphManipulatorObj.displayShards("no", unrelatedMetadata)
+
+  //   const nodeCollection = cy.nodes()
+  //   const nodeArray = graphManipulatorObj.parseCollectionToArray(nodeCollection)
+
+  //   const nodeIdArray = createIdArray(nodeArray)
+
+  //   expect(nodeIdArray.sort()).toMatchObject(["a", "x"])
+
+  //   const edgeIdArray = createIdArray(
+  //     graphManipulatorObj.parseCollectionToArray(cy.edges())
+  //   )
+
+  //   expect(edgeIdArray.sort()).toMatchObject(["edge_from_a_to_x"])
+  // })
+
+  // test("'failed' layout option; check that edges go back to parent if all shards are removed", () => {
+  //   configurations.elements = elements
+  //   const cy = cytoscape(configurations)
+  //   const graphManipulatorObj = new GraphManipulator(cy)
+
+  //   graphManipulatorObj.displayShards("failed", unrelatedMetadata)
+
+  //   const nodeCollection = cy.nodes()
+  //   const nodeArray = graphManipulatorObj.parseCollectionToArray(nodeCollection)
+
+  //   const nodeIdArray = createIdArray(nodeArray)
+
+  //   expect(nodeIdArray.sort()).toMatchObject([
+  //     "a",
+  //     "a>shard_0",
+  //     "a>shard_1",
+  //     "x"
+  //   ])
+
+  //   const edgeIdArray = createIdArray(
+  //     graphManipulatorObj.parseCollectionToArray(cy.edges())
+  //   )
+
+  //   expect(edgeIdArray.sort()).toMatchObject([
+  //     "edge_from_a>shard_0_to_x",
+  //     "edge_from_a>shard_1_to_x"
+  //   ])
+  // })
+})
+
 test("isScatter no ele, should be true", () => {
   const cy = cytoscape(configurations)
   const graphManipulatorObj = new GraphManipulator(cy)
@@ -22,7 +686,8 @@ test("isScatter no ele, should be true", () => {
 describe("findParentPrefixOfShardId: ", () => {
   test("typical case", () => {
     const string = "hello>test>string"
-    const graphManipulatorObj = new GraphManipulator(configurations)
+    const cy = cytoscape(configurations)
+    const graphManipulatorObj = new GraphManipulator(cy)
     const prefix = graphManipulatorObj.findParentPrefixOfShardId(string)
 
     expect(prefix).toBe("hello>test")
@@ -30,7 +695,8 @@ describe("findParentPrefixOfShardId: ", () => {
 
   test("empty string input", () => {
     const string = ""
-    const graphManipulatorObj = new GraphManipulator(configurations)
+    const cy = cytoscape(configurations)
+    const graphManipulatorObj = new GraphManipulator(cy)
     const prefix = graphManipulatorObj.findParentPrefixOfShardId(string)
 
     expect(prefix).toBe("")

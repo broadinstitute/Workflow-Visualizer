@@ -19,7 +19,7 @@ import GraphManipulator from "../utils/GraphManipulator"
 let workflowIdMetadata
 let graphManipulatorObj
 
-const currentDotFile = dotFiles.arrays_scatters_if_three_series
+const currentDotFile = dotFiles.purple_neighbors
 
 class MainGraphView extends Component {
   constructor(props) {
@@ -133,6 +133,7 @@ class MainGraphView extends Component {
       this.setState({
         metadata: jsonMetadata
       })
+
       graphManipulatorObj.updateNodes(jsonMetadata)
     })
   }
@@ -262,10 +263,6 @@ class MainGraphView extends Component {
 
   componentDidMount() {
     graphManipulatorObj = new GraphManipulator(this.cy)
-
-    // create scratch fields for basic/advanced view and shard display options
-    this.cy.scratch("removedNodes", "{}")
-    this.cy.scratch("removedShards", {})
 
     graphManipulatorObj.distributeParentEdges()
 
