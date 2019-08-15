@@ -19,21 +19,117 @@ import GraphManipulator from "../utils/GraphManipulator"
 let workflowIdMetadata
 let graphManipulatorObj
 
-const currentDotFile = dotFiles.purple_neighbors
+const currentDotFile = dotFiles.two_purple_nodes
 
 class MainGraphView extends Component {
   constructor(props) {
     super(props)
+
+    const cytoscapeGraphStyle = [
+      {
+        selector: "node",
+        style: {
+          shape: "circle",
+          "background-color": function(ele) {
+            const nodeData = ele.data()
+            switch (nodeData.status) {
+              case "Done":
+                return "#000000"
+              case "Running":
+                return "#00b200"
+              case "Failed":
+                return "#ff0000"
+              default:
+                return "gray"
+            }
+          },
+          content: "data(name)",
+          "text-valign": "bottom",
+          width: 100,
+          height: 100,
+          opacity: 0.95
+        }
+      },
+      {
+        selector: "edge",
+        style: {
+          "curve-style": "bezier",
+          width: 8,
+          "line-color": "#97CAEF",
+          "target-arrow-color": "#97CAEF",
+          "source-arrow-color": "#97CAEF",
+          "target-arrow-shape": "triangle"
+        }
+      },
+      {
+        selector: "node:parent",
+        style: {
+          label: "data(name)",
+          "border-width": 0.5,
+          "border-color": function(ele) {
+            const nodeData = ele.data()
+            switch (
+              nodeData.parentType === "scatterParent" ||
+                nodeData.parentType === "subworkflow"
+            ) {
+              case true:
+                return "#468499"
+              default:
+                return "black"
+            }
+          },
+          "background-opacity": function(ele) {
+            const nodeData = ele.data()
+            switch (
+              nodeData.parentType === "scatterParent" ||
+                nodeData.parentType === "subworkflow"
+            ) {
+              case true:
+                return 0.222
+              default:
+                return 1
+            }
+          },
+          "background-color": function(ele) {
+            const nodeData = ele.data()
+            switch (
+              nodeData.parentType === "scatterParent" ||
+                nodeData.parentType === "subworkflow"
+            ) {
+              case true:
+                return "#A9A9A9"
+              default:
+                return "#ffffff"
+            }
+          }
+        }
+      },
+      {
+        selector: "node[parentType = 'scatterParent']",
+        style: {
+          shape: "star"
+        }
+      },
+      {
+        selector: "node[parentType = 'subworkflow']",
+        style: {
+          shape: "triangle"
+        }
+      }
+    ]
+
     this.state = {
       currentSelectedNodeData: null,
       metadata: null,
       isDetailedView: true,
-      layout: "dagre",
+      isColorBlind: false,
       enforceFit: true,
       enforceLayout: true,
       enableAnimation: true,
       displayLayers: "smart",
-      displayShards: "smart"
+      displayShards: "smart",
+      layout: "dagre",
+      cytoStyle: cytoscapeGraphStyle
     }
 
     this.updateSelectedNodeData = this.updateSelectedNodeData.bind(this)
@@ -92,6 +188,73 @@ class MainGraphView extends Component {
     }
   }
 
+  toggleColoring = () => {
+    const normalStyle = {
+      selector: "node",
+      style: {
+        shape: "circle",
+        "background-color": function(ele) {
+          const nodeData = ele.data()
+          switch (nodeData.status) {
+            case "Done":
+              return "#000000"
+            case "Running":
+              return "#00b200"
+            case "Failed":
+              return "#ff0000"
+            default:
+              return "gray"
+          }
+        },
+        content: "data(name)",
+        "text-valign": "bottom",
+        width: 100,
+        height: 100,
+        opacity: 0.95
+      }
+    }
+
+    const colorBlindStyle = {
+      selector: "node",
+      style: {
+        shape: "circle",
+        "background-color": function(ele) {
+          const nodeData = ele.data()
+          switch (nodeData.status) {
+            case "Done":
+              return "#000000"
+            case "Running":
+              return "#009E73"
+            case "Failed":
+              return "#CC79A7"
+            default:
+              return "#F0E442"
+          }
+        },
+        content: "data(name)",
+        "text-valign": "bottom",
+        width: 100,
+        height: 100,
+        opacity: 0.95
+      }
+    }
+
+    const newStyle = this.state.cytoStyle.slice()
+    let newBool
+    if (!this.state.isColorBlind) {
+      newStyle[0] = colorBlindStyle
+      newBool = true
+    } else {
+      newStyle[0] = normalStyle
+      newBool = false
+    }
+
+    this.setState({
+      cytoStyle: newStyle,
+      isColorBlind: newBool
+    })
+  }
+
   enforceLayoutAndFit = () => {
     if (this.state.enforceLayout) {
       this.changeLayout(this.state.layout, true)
@@ -134,6 +297,8 @@ class MainGraphView extends Component {
         metadata: jsonMetadata
       })
 
+      console.log(jsonMetadata)
+
       graphManipulatorObj.updateNodes(jsonMetadata)
     })
   }
@@ -141,31 +306,19 @@ class MainGraphView extends Component {
   expandSubworkflow = subworkflowNodeId => {
     const subworkflowNodeObj = this.cy.getElementById(subworkflowNodeId)
 
-    api.fetchMetadata(workflowIdMetadata).then(jsonMetadata => {
-      this.setState({
-        metadata: jsonMetadata
-      })
+    graphManipulatorObj.expandSubworkflow(subworkflowNodeId)
+    graphManipulatorObj.updateNodes(this.state.metadata) // this call is technically redundant since this function is called in updateSelectedNodeData but without this extra call there is delay when it comes to update UI
 
-      graphManipulatorObj.expandSubworkflow(subworkflowNodeId)
-      graphManipulatorObj.updateNodes(jsonMetadata) // this call is technically redundant since this function is called in updateSelectedNodeData but without this extra call there is delay when it comes to update UI
-
-      this.updateSelectedNodeData(subworkflowNodeObj.data())
-      this.enforceLayoutAndFit()
-    })
+    this.updateSelectedNodeData(subworkflowNodeObj.data())
+    this.enforceLayoutAndFit()
   }
 
   scatter = scatterParentNodeId => {
-    api.fetchMetadata(workflowIdMetadata).then(jsonMetadata => {
-      this.setState({
-        metadata: jsonMetadata
-      })
+    graphManipulatorObj.scatter(scatterParentNodeId, this.state.metadata)
 
-      graphManipulatorObj.scatter(scatterParentNodeId, jsonMetadata)
-
-      const scatterParent = this.cy.getElementById(scatterParentNodeId)
-      this.updateSelectedNodeData(scatterParent.data())
-      this.enforceLayoutAndFit()
-    })
+    const scatterParent = this.cy.getElementById(scatterParentNodeId)
+    this.updateSelectedNodeData(scatterParent.data())
+    this.enforceLayoutAndFit()
   }
 
   collapseParent = selectedParentNodeId => {
@@ -184,36 +337,31 @@ class MainGraphView extends Component {
   }
 
   changeDisplayedLayers = layerOption => {
-    api.fetchMetadata(workflowIdMetadata).then(jsonMetadata => {
-      this.setState({
-        metadata: jsonMetadata,
-        displayLayers: layerOption
-      })
-
-      if (layerOption === "smart") {
-        // lead to smart workflow
-      } else {
-        let number = 0
-        if (layerOption === "all") {
-          number = -1
-        } else if (layerOption === "zero") {
-          number = 0
-        } else if (layerOption === "one") {
-          number = 1
-        } else if (layerOption === "two") {
-          number = 2
-        } else if (layerOption === "three") {
-          number = 3
-        } else if (layerOption === "four") {
-          number = 4
-        } else if (layerOption === "five") {
-          number = 5
-        }
-
-        graphManipulatorObj.expandLayers(number, jsonMetadata)
-        this.enforceLayoutAndFit()
-      }
+    this.setState({
+      displayLayers: layerOption
     })
+    if (layerOption === "smart") {
+      // lead to smart workflow
+    } else {
+      let number = 0
+      if (layerOption === "all") {
+        number = -1
+      } else if (layerOption === "zero") {
+        number = 0
+      } else if (layerOption === "one") {
+        number = 1
+      } else if (layerOption === "two") {
+        number = 2
+      } else if (layerOption === "three") {
+        number = 3
+      } else if (layerOption === "four") {
+        number = 4
+      } else if (layerOption === "five") {
+        number = 5
+      }
+      graphManipulatorObj.expandLayers(number, this.state.metadata)
+      this.enforceLayoutAndFit()
+    }
   }
 
   changeLayout(layoutType, isEnforceCall = false) {
@@ -298,6 +446,10 @@ class MainGraphView extends Component {
     this.forceLayout()
   }
 
+  componentWillUnmount() {
+    this.cy.destroy()
+  }
+
   updateToLatestWorkflowId = () => {
     api
       .queryWorkflows()
@@ -312,66 +464,6 @@ class MainGraphView extends Component {
   }
 
   render() {
-    const cytoscapeGraphStyle = [
-      {
-        selector: "node",
-        style: {
-          shape: "circle",
-          "background-color": function(ele) {
-            const nodeData = ele.data()
-            switch (nodeData.status) {
-              case "Done":
-                return "#000000"
-              case "Running":
-                return "#00b200"
-              case "Failed":
-                return "#ff0000"
-              default:
-                return "#bf00ff"
-            }
-          },
-          content: "data(name)",
-          "text-valign": "bottom",
-          width: 100,
-          height: 100,
-          opacity: 0.95
-        }
-      },
-      {
-        selector: "edge",
-        style: {
-          "curve-style": "bezier",
-          width: 8,
-          "line-color": "#97CAEF",
-          "target-arrow-color": "#97CAEF",
-          "source-arrow-color": "#97CAEF",
-          "target-arrow-shape": "triangle"
-        }
-      },
-      {
-        selector: "node:parent",
-        style: {
-          label: "data(name)",
-          "border-width": 0.5,
-          "border-color": "black",
-          "background-color": "#A9A9A9",
-          "background-opacity": 0.222
-        }
-      },
-      {
-        selector: "node[parentType = 'scatterParent']",
-        style: {
-          shape: "star"
-        }
-      },
-      {
-        selector: "node[parentType = 'subworkflow']",
-        style: {
-          shape: "triangle"
-        }
-      }
-    ]
-
     const style = { width: "100%", height: "800px", borderStyle: "solid" }
     const graphAndIdToNodeMapObj = readDotString(currentDotFile)
     const elementsObj = returnGraphJson(graphAndIdToNodeMapObj)
@@ -381,7 +473,7 @@ class MainGraphView extends Component {
     return (
       <div className="flexbox-container">
         <CytoscapeComponent
-          stylesheet={cytoscapeGraphStyle}
+          stylesheet={this.state.cytoStyle}
           elements={CytoscapeComponent.normalizeElements(elementsObj)}
           style={style}
           cy={cy => {
@@ -408,6 +500,8 @@ class MainGraphView extends Component {
           enforceLayoutBoolean={this.state.enforceLayout}
           toggleAnimation={this.toggleAnimation}
           enableAnimation={this.state.enableAnimation}
+          isColorBlind={this.state.isColorBlind}
+          toggleColoring={this.toggleColoring}
         />
       </div>
     )

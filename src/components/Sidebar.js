@@ -125,8 +125,8 @@ const ColorBlindMode = props => {
         <FormControlLabel
           control={
             <Checkbox
-              // checked={props.enableAnimation}
-              // onChange={props.toggleAnimation}
+              checked={props.isColorBlind}
+              onChange={props.toggleColoring}
               //   value="checkedA"
               color="primary"
             />
@@ -170,7 +170,10 @@ const AdvancedControls = props => {
             />
           </Grid>
           <Grid item>
-            <ColorBlindMode />
+            <ColorBlindMode
+              isColorBlind={props.isColorBlind}
+              toggleColoring={props.toggleColoring}
+            />
           </Grid>
         </Grid>
       </ExpansionPanelDetails>
@@ -207,8 +210,8 @@ const ControlPanel = props => {
             <MenuItem value="circle">Circle</MenuItem>
             <MenuItem value="grid">Grid</MenuItem>
             <MenuItem value="random">Random</MenuItem>
-            <MenuItem value="dagre">Left Right DAG</MenuItem>
-            <MenuItem value="klay">Klay</MenuItem>
+            <MenuItem value="dagre">Left-Right DAG</MenuItem>
+            <MenuItem value="klay">Top-Down DAG</MenuItem>
           </Select>
           <FormHelperText>Click to select layout formats</FormHelperText>
         </FormControl>
@@ -354,23 +357,39 @@ const NodeTypeShapeList = () => {
   )
 }
 
-const ColorStatusList = () => {
-  return (
-    <div>
-      <Typography variant="subtitle1">Node Status Color</Typography>
+const ColorStatusList = props => {
+  let grid
+  if (props.isColorBlind) {
+    grid = (
+      <Grid container direction="row" justify="space-evenly">
+        <SingleGridItem caption="Done" id="circle" color="#000000" />
+        <SingleGridItem caption="Running" id="circle" color="#009E73" />
+        <SingleGridItem caption="Failed" id="circle" color="#CC79A7" />
+        <SingleGridItem caption="Uninitialized" id="circle" color="#F0E442" />
+      </Grid>
+    )
+  } else {
+    grid = (
       <Grid container direction="row" justify="space-evenly">
         <SingleGridItem caption="Done" id="circle" color="#000000" />
         <SingleGridItem caption="Running" id="circle" color="#00b200" />
         <SingleGridItem caption="Failed" id="circle" color="#ff0000" />
-        <SingleGridItem caption="Uninitialized" id="circle" color="#bf00ff" />
+        <SingleGridItem caption="Uninitialized" id="circle" color="gray" />
       </Grid>
+    )
+  }
+
+  return (
+    <div>
+      <Typography variant="subtitle1">Node Status Color</Typography>
+      {grid}
     </div>
   )
 }
 
-const HelpExpansionPanel = () => {
+const HelpExpansionPanel = props => {
   return (
-    <ExpansionPanel>
+    <ExpansionPanel defaultExpanded={true}>
       <ExpansionPanelSummary
         expandIcon={<ExpandMoreIcon />}
         aria-controls="panel1a-content"
@@ -384,15 +403,16 @@ const HelpExpansionPanel = () => {
             <Typography paragraph={true}>
               {" "}
               Left click to drag and select nodes. Right click (two finger click
-              on Mac) to expand and collapse scatter nodes (stars) and
-              subworkflows (triangles)
+              on Mac) to expand scatters (stars) and subworkflows (triangles).
+              Then, right click again on gray areas to collapse subworkflows and
+              scatters
             </Typography>
           </Grid>
           <Grid item>
             <Divider />
           </Grid>
           <Grid item>
-            <ColorStatusList />
+            <ColorStatusList isColorBlind={props.isColorBlind} />
           </Grid>
           <Grid item>
             <NodeTypeShapeList />
@@ -428,13 +448,15 @@ const RenderSidebar = props => {
         changeDisplayedLayers={props.changeDisplayedLayers}
         displayShards={props.displayShards}
         changeDisplayedShards={props.changeDisplayedShards}
+        isColorBlind={props.isColorBlind}
+        toggleColoring={props.toggleColoring}
       />
       <WorkflowDataExpansionPanel
         workflowId={props.workflowId}
         startTime={props.startTime}
         endTime={props.endTime}
       />
-      <HelpExpansionPanel />
+      <HelpExpansionPanel isColorBlind={props.isColorBlind} />
     </div>
   )
 }
@@ -510,6 +532,7 @@ class Sidebar extends Component {
     if (this.props.currentSelectedNodeData !== null) {
       const nodeDataObj = JSON.parse(this.props.currentSelectedNodeData)
       displayName = nodeDataObj.id
+      console.log(this.props.currentSelectedNodeData)
     }
 
     return (
@@ -535,6 +558,8 @@ class Sidebar extends Component {
         enforceLayoutBoolean={this.props.enforceLayoutBoolean}
         toggleAnimation={this.props.toggleAnimation}
         enableAnimation={this.props.enableAnimation}
+        isColorBlind={this.props.isColorBlind}
+        toggleColoring={this.props.toggleColoring}
       />
     )
   }

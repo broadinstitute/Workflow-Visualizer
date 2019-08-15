@@ -67,12 +67,9 @@ export default class GraphManipulator {
     }
   }
 
-  collapseAll = () => {
-    const parentCollection = this.cy.filter("node:parent")
-    const parentList = this.parseCollectionToArray(parentCollection)
-
+  collapseArray = array => {
     const topLevelParentList = []
-    parentList.forEach(parent => {
+    array.forEach(parent => {
       const parentAttribute = parent.data("parent")
       if (parentAttribute === null) {
         topLevelParentList.push(parent)
@@ -83,6 +80,24 @@ export default class GraphManipulator {
       const parentId = parent.id()
       this.collapseParent(parentId)
     })
+  }
+
+  collapseAll = () => {
+    const parentCollection = this.cy.filter("node:parent")
+
+    const subworkflowParentsCollection = parentCollection.filter(
+      '[parentType = "subworkflow"],[parentType = "scatterParent"]'
+    )
+    const subworkflowParents = this.parseCollectionToArray(
+      subworkflowParentsCollection
+    )
+    this.collapseArray(subworkflowParents)
+
+    // const scatterParentsCollection = parentCollection.filter(
+    //   '[parentType = "scatterParent"]'
+    // )
+    // const scatterParents = this.parseCollectionToArray(scatterParentsCollection)
+    // this.collapseArray(scatterParents)
   }
 
   expandLayers = (numberExpansions, jsonMetadata) => {
