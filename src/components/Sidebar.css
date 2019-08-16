@@ -7,6 +7,16 @@
   word-wrap: break-word;
 }
 
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.overflow-text {
+  overflow: hidden;
+  word-wrap: break-word;
+}
+
 #circle {
   width: 50px;
   height: 50px;

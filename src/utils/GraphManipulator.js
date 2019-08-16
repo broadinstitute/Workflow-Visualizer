@@ -1,5 +1,4 @@
 import * as dotparser from "dotparser"
-import "../MainGraphView.css"
 import { returnGraphJson } from "./createCytoscapeGraphJSON"
 import * as dotFiles from "./dotFiles"
 import { parseCallable, parseChildArray } from "./dotStringParsingFunctions"
@@ -10,14 +9,28 @@ import {
   returnFlattenedMetadataDictionary
 } from "./metadataFunctions"
 
+/**
+ * GraphManipulator object manipulates the cy which holds the logic and data associated with the
+ * directed graph in order to create all the functionality of the graph including scatters, subworkflow expansion,
+ * collapse, changing colors of nodes.
+ *
+ * GraphManipulator offers a level of abstraction to GraphView such that all the internal logic in the graph is on this object.
+ * This enables the possibility of unit testing the internal logic.
+ */
 export default class GraphManipulator {
+  /**
+   * Passes cy which stores the data associated with the directed graph
+   * Constructor also initializes the scratch field (this is a place to store extraneous data) of cy.
+   * @param {Object} cy
+   */
   constructor(cy) {
     this.cy = cy
     cy.scratch("removedNodes", "{}")
   }
 
-  checkIfWholeShardIsRemoved
-
+  /**
+   * @param {Array} nodeArray
+   */
   hideNodeArray = nodeArray => {
     nodeArray.forEach(node => {
       node.style("visibility", "hidden")

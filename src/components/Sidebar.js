@@ -1,6 +1,5 @@
 import React, { Component } from "react"
 import ReactLoading from "react-loading"
-import Container from "@material-ui/core/Container"
 import Typography from "@material-ui/core/Typography"
 import List from "@material-ui/core/List"
 import {
@@ -22,7 +21,7 @@ import {
   InputLabel,
   FormHelperText
 } from "@material-ui/core"
-import "../Sidebar.css"
+import "./Sidebar.css"
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
 import { Done, Error } from "@material-ui/icons"
 
@@ -33,58 +32,45 @@ import { Done, Error } from "@material-ui/icons"
 const ExpandOptions = props => {
   return (
     <Box>
-      <Grid container direction="column" spacing={1}>
+      {/* <Typography>
+        Expand first&nbsp;
+        <Select
+          value={props.displayLayers}
+          color="primary"
+          onChange={props.changeDisplayedLayers}
+        >
+          <MenuItem value="zero">0</MenuItem>
+          <MenuItem value="one">1</MenuItem>
+          <MenuItem value="two">2</MenuItem>
+          <MenuItem value="three">3</MenuItem>
+          <MenuItem value="four">4</MenuItem>
+          <MenuItem value="five">5</MenuItem>
+          <MenuItem value="all">ALL (∞)</MenuItem>
+        </Select>
+        layers
+      </Typography> */}
+      <Grid container direction="row" alignItems="center" spacing={1}>
         <Grid item>
-          <Grid container direction="row" alignItems="center" spacing={1}>
-            <Grid item>
-              <Typography>Expand first</Typography>
-            </Grid>
-            <Grid item>
-              <Select
-                value={props.displayLayers}
-                color="primary"
-                onChange={props.changeDisplayedLayers}
-              >
-                <MenuItem value="zero">0</MenuItem>
-                <MenuItem value="one">1</MenuItem>
-                <MenuItem value="two">2</MenuItem>
-                <MenuItem value="three">3</MenuItem>
-                <MenuItem value="four">4</MenuItem>
-                <MenuItem value="five">5</MenuItem>
-                <MenuItem value="all">ALL (∞)</MenuItem>
-                <MenuItem value="smart">smart</MenuItem>
-              </Select>
-            </Grid>
-            <Grid item>
-              <Typography>layers</Typography>
-            </Grid>
-          </Grid>
+          <Typography>Expand first</Typography>
         </Grid>
         <Grid item>
-          <FormGroup row>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  // checked={props.enableAnimation}
-                  // onChange={props.toggleAnimation}
-                  //   value="checkedA"
-                  color="primary"
-                />
-              }
-              label="Expand subworkflows"
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  // checked={props.enableAnimation}
-                  // onChange={props.toggleAnimation}
-                  //   value="checkedA"
-                  color="primary"
-                />
-              }
-              label="Expand scatters"
-            />
-          </FormGroup>
+          <Select
+            value={props.displayLayers}
+            color="primary"
+            onChange={props.changeDisplayedLayers}
+          >
+            <MenuItem value="zero">0</MenuItem>
+            <MenuItem value="one">1</MenuItem>
+            <MenuItem value="two">2</MenuItem>
+            <MenuItem value="three">3</MenuItem>
+            <MenuItem value="four">4</MenuItem>
+            <MenuItem value="five">5</MenuItem>
+            <MenuItem value="all">ALL (∞)</MenuItem>
+            <MenuItem value="smart">smart</MenuItem>
+          </Select>
+        </Grid>
+        <Grid item>
+          <Typography>layers</Typography>
         </Grid>
       </Grid>
     </Box>
@@ -93,7 +79,7 @@ const ExpandOptions = props => {
 
 const SelectShardDisplay = props => {
   return (
-    <Box>
+    <Box className="flex-row">
       <Grid container direction="row" alignItems="center" spacing={1}>
         <Grid item>
           <Typography>Display</Typography>
@@ -150,12 +136,6 @@ const AdvancedControls = props => {
       </ExpansionPanelSummary>
       <ExpansionPanelDetails>
         <Grid container direction="column" spacing={2}>
-          <Grid item>
-            <Typography variant="subtitle2">
-              All controls at default are set to smart which automatically
-              adjusts graph display based on the number of nodes in the graph.
-            </Typography>
-          </Grid>
           <Divider />
           <Grid item>
             <ExpandOptions
@@ -181,6 +161,101 @@ const AdvancedControls = props => {
   )
 }
 
+const SelectLayout = props => {
+  return (
+    <FormControl>
+      <InputLabel>Layout</InputLabel>
+      <Select
+        value={props.layout}
+        color="primary"
+        onChange={props.changeLayout}
+      >
+        <MenuItem value="breadthfirst">Breadthfirst</MenuItem>
+        <MenuItem value="circle">Circle</MenuItem>
+        <MenuItem value="grid">Grid</MenuItem>
+        <MenuItem value="random">Random</MenuItem>
+        <MenuItem value="dagre">Left-Right DAG</MenuItem>
+        <MenuItem value="klay">Top-Down DAG</MenuItem>
+      </Select>
+      <FormHelperText>Click to select layout formats</FormHelperText>
+    </FormControl>
+  )
+}
+
+const EnableAndEnforceCheckboxes = props => {
+  return (
+    <FormControl>
+      <FormLabel component="legend" align="center">
+        Enable
+      </FormLabel>
+      <FormGroup row>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={props.enableAnimation}
+              onChange={props.toggleAnimation}
+              color="primary"
+            />
+          }
+          label="Animation"
+        />
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={props.viewBoolean}
+              onChange={props.changeViewTypeFnc}
+              color="primary"
+            />
+          }
+          label="Detailed View"
+        />
+      </FormGroup>
+      <FormLabel component="legend" align="center">
+        Enforce
+      </FormLabel>
+      <FormGroup row>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={props.enforceLayoutBoolean}
+              onChange={props.toggleEnforceLayoutFnc}
+              color="primary"
+            />
+          }
+          label="Layout"
+        />
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={props.enforceFitBoolean}
+              onChange={props.toggleEnforceFitFnc}
+              color="primary"
+            />
+          }
+          label="Fit"
+        />
+      </FormGroup>
+    </FormControl>
+  )
+}
+
+const LayoutFitButtons = props => {
+  return (
+    <Grid container direction="row" alignItems="center" justify="space-evenly">
+      <Grid item>
+        <Button color="primary" onClick={props.forceLayoutFnc}>
+          Fix Layout
+        </Button>
+      </Grid>
+      <Grid item>
+        <Button color="primary" onClick={props.fitFnc}>
+          Fix Fit
+        </Button>
+      </Grid>
+    </Grid>
+  )
+}
+
 const ControlPanel = props => {
   return (
     <List>
@@ -190,109 +265,36 @@ const ControlPanel = props => {
         </Typography>
       </ListItem>
       <Divider />
-      <Typography style={{ padding: "10px 15px 0px 15px" }}>
-        Current Node: <strong>{props.selectedNode}</strong>
-      </Typography>
       <ListItem>
-        <Typography>Status: </Typography>
+        <Typography className="overflow-text">
+          Current Node: <strong>{props.selectedNode}</strong>
+        </Typography>
+      </ListItem>
+      <ListItem>
+        <Typography>Status:&nbsp; </Typography>
         {props.status}
-        {/* <ReactLoading type="bars" color="blue" height={30} width={30} /> */}
       </ListItem>
       <ListItem>
-        <FormControl>
-          <InputLabel>Layout</InputLabel>
-          <Select
-            value={props.layout}
-            color="primary"
-            onChange={props.changeLayout}
-          >
-            <MenuItem value="breadthfirst">Breadthfirst</MenuItem>
-            <MenuItem value="circle">Circle</MenuItem>
-            <MenuItem value="grid">Grid</MenuItem>
-            <MenuItem value="random">Random</MenuItem>
-            <MenuItem value="dagre">Left-Right DAG</MenuItem>
-            <MenuItem value="klay">Top-Down DAG</MenuItem>
-          </Select>
-          <FormHelperText>Click to select layout formats</FormHelperText>
-        </FormControl>
+        <SelectLayout layout={props.layout} changeLayout={props.changeLayout} />
       </ListItem>
       <ListItem>
-        <FormControl>
-          <FormLabel component="legend" align="center">
-            Enable
-          </FormLabel>
-          <FormGroup row>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={props.enableAnimation}
-                  onChange={props.toggleAnimation}
-                  //   value="checkedA"
-                  color="primary"
-                />
-              }
-              label="Animation"
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={props.viewBoolean}
-                  onChange={props.changeViewTypeFnc}
-                  //   value="checkedA"
-                  color="primary"
-                />
-              }
-              label="Detailed View"
-            />
-          </FormGroup>
-          <FormLabel component="legend" align="center">
-            Enforce
-          </FormLabel>
-          <FormGroup row>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={props.enforceLayoutBoolean}
-                  onChange={props.toggleEnforceLayoutFnc}
-                  //   value="checkedA"
-                  color="primary"
-                />
-              }
-              label="Layout"
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={props.enforceFitBoolean}
-                  onChange={props.toggleEnforceFitFnc}
-                  //   value="checkedA"
-                  color="primary"
-                />
-              }
-              label="Fit"
-            />
-          </FormGroup>
-        </FormControl>
+        <EnableAndEnforceCheckboxes
+          enableAnimation={props.enableAnimation}
+          toggleAnimation={props.toggleAnimation}
+          viewBoolean={props.viewBoolean}
+          changeViewTypeFnc={props.changeViewTypeFnc}
+          enforceLayoutBoolean={props.enforceLayoutBoolean}
+          toggleEnforceLayoutFnc={props.toggleEnforceLayoutFnc}
+          enforceFitBoolean={props.enforceFitBoolean}
+          toggleEnforceFitFnc={props.toggleEnforceFitFnc}
+        />
       </ListItem>
 
       <ListItem>
-        <Grid
-          container
-          direction="row"
-          alignItems="center"
-          justify="space-evenly"
-        >
-          <Grid item>
-            <Button color="primary" onClick={props.forceLayoutFnc}>
-              Fix Layout
-            </Button>
-          </Grid>
-          <Grid item>
-            <Button color="primary" onClick={props.fitFnc}>
-              Fix Fit
-            </Button>
-          </Grid>
-        </Grid>
+        <LayoutFitButtons
+          forceLayoutFnc={props.forceLayoutFnc}
+          fitFnc={props.fitFnc}
+        />
       </ListItem>
     </List>
   )
@@ -309,17 +311,17 @@ const WorkflowDataExpansionPanel = props => {
         <Typography color="primary">Workflow Data</Typography>
       </ExpansionPanelSummary>
       <ExpansionPanelDetails>
-        <Grid container direction="column">
-          <Grid item>
-            <Typography>Workflow ID: {props.workflowId}</Typography>
-          </Grid>
-          <Grid item>
-            <Typography>Start time: {props.startTime}</Typography>
-          </Grid>
-          <Grid item>
-            <Typography>End time: {props.endTime}</Typography>
-          </Grid>
-        </Grid>
+        <Box className="overflow-text">
+          <Typography>Workflow ID: {props.workflowId}</Typography>
+          <Divider />
+          <Typography>Start time: {props.startTime}</Typography>
+          <Divider />
+          <Typography>End time: {props.endTime}</Typography>
+          <Divider />
+          <Typography>Inputs: {props.inputs}</Typography>
+          <Divider />
+          <Typography>Outputs: {props.outputs}</Typography>
+        </Box>
       </ExpansionPanelDetails>
     </ExpansionPanel>
   )
@@ -380,10 +382,10 @@ const ColorStatusList = props => {
   }
 
   return (
-    <div>
+    <Box>
       <Typography variant="subtitle1">Node Status Color</Typography>
       {grid}
-    </div>
+    </Box>
   )
 }
 
@@ -425,7 +427,7 @@ const HelpExpansionPanel = props => {
 
 const RenderSidebar = props => {
   return (
-    <div className="sidebar-div">
+    <Box className="sidebar-div">
       <ControlPanel
         selectedNode={props.selectedNode}
         status={props.status}
@@ -455,9 +457,11 @@ const RenderSidebar = props => {
         workflowId={props.workflowId}
         startTime={props.startTime}
         endTime={props.endTime}
+        inputs={props.inputs}
+        outputs={props.outputs}
       />
       <HelpExpansionPanel isColorBlind={props.isColorBlind} />
-    </div>
+    </Box>
   )
 }
 
@@ -482,19 +486,7 @@ class Sidebar extends Component {
     this.props.changeDisplayedShards(event.target.value)
   }
 
-  render() {
-    let id = null
-    let startWorkflow = null
-    let endWorkflow = null
-    let currentStatus = null
-
-    if (this.props.metadata !== null) {
-      id = this.props.metadata.id
-      startWorkflow = this.props.metadata.start
-      endWorkflow = this.props.metadata.end
-      currentStatus = this.props.metadata.status
-    }
-
+  prepareStatus(currentStatus) {
     let statusSymbol = null
     let statusText = `(${currentStatus})`
     if (currentStatus === "Submitted" || currentStatus === "Running") {
@@ -519,7 +511,7 @@ class Sidebar extends Component {
       statusSymbol = <Error color="error" />
     }
 
-    const status = (
+    return (
       <Grid container direction="row" alignItems="center" spacing={1}>
         <Grid item>{statusSymbol}</Grid>
         <Grid item>
@@ -527,12 +519,30 @@ class Sidebar extends Component {
         </Grid>
       </Grid>
     )
+  }
+
+  render() {
+    let id = null
+    let startWorkflow = null
+    let endWorkflow = null
+    let currentStatus = null
+    let inputs = null
+    let outputs = null
+    if (this.props.metadata !== null) {
+      id = this.props.metadata.id
+      startWorkflow = this.props.metadata.start
+      endWorkflow = this.props.metadata.end
+      currentStatus = this.props.metadata.status
+      inputs = JSON.stringify(this.props.metadata.inputs)
+      outputs = JSON.stringify(this.props.metadata.outputs)
+    }
+
+    const status = this.prepareStatus(currentStatus)
 
     let displayName = null
     if (this.props.currentSelectedNodeData !== null) {
       const nodeDataObj = JSON.parse(this.props.currentSelectedNodeData)
       displayName = nodeDataObj.id
-      console.log(this.props.currentSelectedNodeData)
     }
 
     return (
@@ -560,6 +570,8 @@ class Sidebar extends Component {
         enableAnimation={this.props.enableAnimation}
         isColorBlind={this.props.isColorBlind}
         toggleColoring={this.props.toggleColoring}
+        inputs={inputs}
+        outputs={outputs}
       />
     )
   }

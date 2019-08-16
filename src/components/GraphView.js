@@ -4,24 +4,35 @@ import klay from "cytoscape-klay"
 import cytoscape from "cytoscape"
 
 import Sidebar from "./Sidebar"
-import "../MainGraphView.css"
+import "./GraphView.css"
 
 import * as api from "../utils/api"
 import { returnGraphJson } from "../utils/createCytoscapeGraphJSON"
 import * as dotFiles from "../utils/dotFiles"
 import { readDotString } from "../utils/dotStringParsingFunctions"
-import { returnDataDictionary } from "../utils/metadataFunctions"
 import * as layoutOptions from "../utils/layoutOptions"
 import CytoscapeComponent from "react-cytoscapejs"
 
 import GraphManipulator from "../utils/GraphManipulator"
+import { Box } from "@material-ui/core"
+import PropTypes from "prop-types"
 
-let workflowIdMetadata
 let graphManipulatorObj
 
-const currentDotFile = dotFiles.two_purple_nodes
-
-class MainGraphView extends Component {
+const currentDotFile = dotFiles.smart_seq_2_single_cell
+/**
+ * Component that represents the actual directed graph of the workflow as well as a sidebar to control the graph
+ *
+ * The component can slowly handle a workflow with 6000 nodes and 3000 edges. It can probably handle more, but it won't be very
+ * fast and might crash. However, that should be big enough for most workflows.
+ */
+class GraphView extends Component {
+  /**
+   * Constructor will set a variety of states related to the sidebar except the state cytoStyle
+   * which is the styling for the graph nodes and edges. This styling can be dynamically changed
+   * in toggleColoring. Hence, the need for it be stored as a state.
+   * @param {*} props
+   */
   constructor(props) {
     super(props)
 
@@ -126,9 +137,9 @@ class MainGraphView extends Component {
       enforceFit: true,
       enforceLayout: true,
       enableAnimation: true,
-      displayLayers: "smart",
-      displayShards: "smart",
-      layout: "dagre",
+      displayLayers: "zero",
+      displayShards: "all",
+      layout: "klay",
       cytoStyle: cytoscapeGraphStyle
     }
 
@@ -137,34 +148,33 @@ class MainGraphView extends Component {
     this.updateUIWithMetadata = this.updateUIWithMetadata.bind(this)
   }
 
-  // stressTest = () => {
-  //   for (let i = 0; i < 3000; i++) {
-  //     const node1 = `n${i}`
-  //     const node2 = `n${i}${i}`
-
-  //     this.cy.add([
-  //       { group: "nodes", data: { id: node1 } },
-  //       { group: "nodes", data: { id: node2 } },
-  //       { group: "edges", data: { id: i, source: node1, target: node2 } }
-  //     ])
-  //   }
-  // }
-
+  /**
+   * Refits the entire graph onto the viewport.
+   */
   forceFit = () => {
     this.cy.fit()
   }
 
+  /**
+   * Using the current layout state of the component, the function will force the nodes
+   * into that layout.
+   */
   forceLayout = () => {
     this.changeLayout(this.state.layout)
   }
 
+  /**
+   * Changes the boolean animation state.
+   */
   toggleAnimation = () => {
     this.setState(prevState => ({
       enableAnimation: !prevState.enableAnimation
     }))
-    console.log("animation!!")
   }
 
+  /**
+   * Changes the boolean enforceLayout state and will force graph into layout if box is checked.
+   */
   toggleEnforceLayout = () => {
     this.setState(prevState => ({
       enforceLayout: !prevState.enforceLayout
@@ -176,6 +186,9 @@ class MainGraphView extends Component {
     }
   }
 
+  /**
+   * Changes the boolean enforceFit state and will force graph to fit viewport if the box is checked.
+   */
   toggleEnforceFit = () => {
     this.setState(prevState => ({
       enforceFit: !prevState.enforceFit
@@ -188,6 +201,12 @@ class MainGraphView extends Component {
     }
   }
 
+  /**
+   * The function has two variables normalStyle and colorBlindStyle that
+   *  describe the coloring scheme of the nodes in the graph. Depending on whether or
+   * not isColorBlind state is currently true or false, one of the two styles will be inserted
+   * into the state cytoStyle.
+   */
   toggleColoring = () => {
     const normalStyle = {
       selector: "node",
@@ -255,6 +274,12 @@ class MainGraphView extends Component {
     })
   }
 
+  /**
+   * Checks the state of enforceLayout and enforceFit and determines whether or not to refit and re-layout
+   * the graph.
+   * This function is called during any modification of the nodes visible in the graph which is either a
+   * toggleViewType(), scatter(), expandSubworkflow(), or collapseParent().
+   */
   enforceLayoutAndFit = () => {
     if (this.state.enforceLayout) {
       this.changeLayout(this.state.layout, true)
@@ -263,6 +288,14 @@ class MainGraphView extends Component {
     }
   }
 
+  /**
+   *  Changes the state of isDetailedView and triggers a change in the
+   *  the types of nodes displayed on the directed graph. Basic view
+   *  will remove all nodes that are not calls on the wdl file.
+   *
+   *  Function is passed to a checkbox in Sidebar.js.
+   *
+   */
   toggleViewType = () => {
     // logic is inverted because this is the state prior to changing
     // so if state isBasicView = false, then, since in the immediate future it will be true,
@@ -281,6 +314,13 @@ class MainGraphView extends Component {
     }))
   }
 
+  /**
+   *
+   * @param {Object} nodeData
+   * updates the nodeData state and calls a function
+   * to update the coloring / status of all the visible nodes
+   * on the directed graph
+   */
   updateSelectedNodeData(nodeData) {
     const nodeDataString = JSON.stringify(nodeData)
     this.setState({
@@ -291,13 +331,16 @@ class MainGraphView extends Component {
     this.updateUIWithMetadata()
   }
 
+  /**
+   *
+   * This function will fetch metadata and call graphManipulatorObj
+   * to update the data associated with all the nodes.
+   */
   updateUIWithMetadata() {
-    api.fetchMetadata(workflowIdMetadata).then(jsonMetadata => {
+    api.fetchMetadata(this.props.workflowId).then(jsonMetadata => {
       this.setState({
         metadata: jsonMetadata
       })
-
-      console.log(jsonMetadata)
 
       graphManipulatorObj.updateNodes(jsonMetadata)
     })
@@ -411,8 +454,9 @@ class MainGraphView extends Component {
 
   componentDidMount() {
     graphManipulatorObj = new GraphManipulator(this.cy)
-
     graphManipulatorObj.distributeParentEdges()
+
+    this.toggleColoring()
 
     cytoscape.use(dagre)
     cytoscape.use(klay)
@@ -450,28 +494,13 @@ class MainGraphView extends Component {
     this.cy.destroy()
   }
 
-  updateToLatestWorkflowId = () => {
-    api
-      .queryWorkflows()
-      .then(response => {
-        const id = response.results[0].id
-        workflowIdMetadata = id
-      })
-      .catch(err => {
-        console.warn(err)
-        workflowIdMetadata = null
-      })
-  }
-
   render() {
-    const style = { width: "100%", height: "800px", borderStyle: "solid" }
+    const style = { width: "70%", height: "800px", borderStyle: "solid" }
     const graphAndIdToNodeMapObj = readDotString(currentDotFile)
     const elementsObj = returnGraphJson(graphAndIdToNodeMapObj)
 
-    this.updateToLatestWorkflowId()
-
     return (
-      <div className="flexbox-container">
+      <Box id="main-container">
         <CytoscapeComponent
           stylesheet={this.state.cytoStyle}
           elements={CytoscapeComponent.normalizeElements(elementsObj)}
@@ -503,9 +532,13 @@ class MainGraphView extends Component {
           isColorBlind={this.state.isColorBlind}
           toggleColoring={this.toggleColoring}
         />
-      </div>
+      </Box>
     )
   }
 }
 
-export default MainGraphView
+GraphView.propTypes = {
+  workflowId: PropTypes.string
+}
+
+export default GraphView
