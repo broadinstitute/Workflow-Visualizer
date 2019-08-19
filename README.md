@@ -1,68 +1,49 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# Workflow Visualizer
 
-## Available Scripts
+This project helps visualize the progress of computational workflows on the Cromwell engine. Using a directed graph UI, a user will be able to see the status of individual calls and tasks of a workflow as well as see data generated from the workflow.
 
-In the project directory, you can run:
+Once workflow manager is rewritten in react, this project will be able to be integrated into workflow manager project.
 
-### `npm start`
+### How to use workflow visualizer component
 
-Runs the app in the development mode.<br>
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+To use the workflow visualizer, you just need to import WorkflowVisualizer.js as a component.
 
-The page will reload if you make edits.<br>
-You will also see any lint errors in the console.
+For example,
 
-### `npm test`
+```javascript
+import WorkflowVisualizer as './WorkflowVisualizer'
+```
 
-Launches the test runner in the interactive watch mode.<br>
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Then give the component a props that specifies the current workflow id.
 
-### `npm run build`
+For example,
 
-Builds the app for production to the `build` folder.<br>
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```javascript
+<WorkflowVisualizer workflowId={this.state.workflowId} />
+```
 
-The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!
+### Current Problems
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+1. There is currently no API endpoint to convert WDL files to DOT files. So, right now we are manually pre-converting WDL to DOT via Womtool. For this to work smoothly, it is necessary to have an endpoint that workflow visualizer can hit based on the workflow id to fetch the corresponding dot files.
+2. The way that we locate subworkflows will not always work. Currently, in GraphManipulator.js, we find the alias name associated with a subworkflow. Then, it fetches a subworkflow with its manually pre-computed dot file derived from its wdl file. This problem is hard to solve without the proper endpoints created.
+3. Womtool needs modification to add an additional field. I've pushed this as a branch onto the cromwell repo.
 
-### `npm run eject`
+### How Workflow Visualizer Works.
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+We are using CytoscapeJS and its react component to build the graph. Workflow visualizer is able to handle most cases of subworkflows, scatters, and if statements.
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+#### High level overview:
 
-Instead, it will copy all the configuration files and the transitive dependencies (Webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+A dot file is inputted and its nodes are generated. Then, Cromwell metadata is integrated into the graph via an api call and some processing is used to get the metadata into an easily readable format. Then, all scatters and subworkflow nodes have listeners attached to them such that right clicks (or two finger clicks on mac) causes an expansion of the nodes. Finally, there is a sidebar in the WorkflowVisualizer component that gives additional controls to the user.
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+##### Subworkflows
 
-## Learn More
+Subworkflows work as follows: you first look for the data associated with the subworkflow node that you intend to expand. Then, you identify the subworkflow name and then find the corresponding DOT file. The dot file is parsed and the subworkflow nodes are inputted onto the graph but these nodes still need to integrate the metadata information. Then, all the statuses of the nodes are updated in the graph based on the metadata. This means that the color of the nodes have changed to reflect ongoing status of the nodes as well as identifying which nodes are scatters and subworkflows. Finally, the edges of parent nodes are redistributed to parents.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+##### Scatters
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Scatters work as follows: first you parse the metadata, then you look for data associated with the scatter node. Then, you create each shard as described by the metadata and add it as children to the scatter node. Finally, you distribute the scatter node edges to the respective shards.
 
-### Code Splitting
+##### If statements
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
-
-### Analyzing the Bundle Size
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
-
-### Making a Progressive Web App
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
-
-### Advanced Configuration
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
-
-### Deployment
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
-
-### `npm run build` fails to minify
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
+If statements work as follows: unlike subworkflows and scatters, if statements are automatically expanded. If the if statement is not actually ran (AKA the condition was not met), none of the nodes inside the workflow will be initialized and will stay the gray/uninitialized color.
