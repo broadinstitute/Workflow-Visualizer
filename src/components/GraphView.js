@@ -346,6 +346,11 @@ class GraphView extends Component {
     })
   }
 
+  /**
+   * @param {String} subworkflowNodeId
+   * Expands a subworkflow node using its node id by searching for a subworkflow's corresponding
+   * wdl file.
+   */
   expandSubworkflow = subworkflowNodeId => {
     const subworkflowNodeObj = this.cy.getElementById(subworkflowNodeId)
 
@@ -356,6 +361,10 @@ class GraphView extends Component {
     this.enforceLayoutAndFit()
   }
 
+  /**
+   * @param {String} scatterParentNodeId
+   * Expands a scatter node using its node id by generating shards from metadata.
+   */
   scatter = scatterParentNodeId => {
     graphManipulatorObj.scatter(scatterParentNodeId, this.state.metadata)
 
@@ -364,6 +373,11 @@ class GraphView extends Component {
     this.enforceLayoutAndFit()
   }
 
+  /**
+   * @param {String} selectedParentNodeId
+   * Collapses a parent node by removing all descendants of this parent node and remapping descendant edges back to the parent.
+   *  Descendants refers to any children of the parent node or children of children and so on.
+   */
   collapseParent = selectedParentNodeId => {
     graphManipulatorObj.collapseParent(selectedParentNodeId)
 
@@ -371,6 +385,12 @@ class GraphView extends Component {
     this.updateSelectedNodeData(parentNode.data())
   }
 
+  /**
+   *
+   * @param {String} selectionOption
+   * Changes the types of shards visible on the screen. We can either display no shards, all shards, or only failed shards
+   * for debugging purposes
+   */
   changeDisplayedShards = selectionOption => {
     this.setState({
       displayShards: selectionOption
@@ -379,6 +399,12 @@ class GraphView extends Component {
     graphManipulatorObj.displayShards(selectionOption, this.state.metadata)
   }
 
+  /**
+   *
+   * @param {String} layerOptions
+   *
+   * Changes the number of layers currently expanded in the graph.
+   */
   changeDisplayedLayers = layerOption => {
     this.setState({
       displayLayers: layerOption
@@ -407,6 +433,14 @@ class GraphView extends Component {
     }
   }
 
+  /**
+   *
+   * @param {String} layoutType
+   * @param {Boolean} isEnforceCall
+   *
+   * Changes the type of layout, whether to animate the change in layout, and whether all nodes should fit on the screen
+   * by modifying the options of the layout call.
+   */
   changeLayout(layoutType, isEnforceCall = false) {
     this.setState({
       layout: layoutType
@@ -452,6 +486,10 @@ class GraphView extends Component {
     this.cy.layout(options).run()
   }
 
+  /**
+   * Initializes a GraphManipulator object that manipulates the graph by modifying the cy object, adds additional layout options
+   * via npm packages, and attaches listeners onto certain types of nodes in the graph to expand and collapse nodes.
+   */
   componentDidMount() {
     graphManipulatorObj = new GraphManipulator(this.cy)
     graphManipulatorObj.distributeParentEdges()
@@ -494,6 +532,9 @@ class GraphView extends Component {
     this.cy.destroy()
   }
 
+  /**
+   * Create a cytoscape component to display the graph and a sidebar to display data from the workflow and control the graphs
+   */
   render() {
     const style = { width: "70%", height: "800px", borderStyle: "solid" }
     const graphAndIdToNodeMapObj = readDotString(currentDotFile)

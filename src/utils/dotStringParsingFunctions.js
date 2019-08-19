@@ -7,6 +7,13 @@ import { buildNodeIdFromDot } from "./idGeneration"
  * that can be easily read and converted into a UI via cytoscape.
  */
 
+/**
+ * Looks for parent nodes from the dotparser output.
+ * Those nodes will have more information nested inside the dot parser output
+ * and thus will need to be handled differently.
+ * @param {Object[]} childArray
+ */
+
 const lookForParentNames = childArray => {
   const parentNameArray = []
   childArray.forEach(function(child) {
@@ -20,6 +27,19 @@ const lookForParentNames = childArray => {
   return parentNameArray
 }
 
+/**
+ *
+ *
+ * Checks if node is added to the Object graphMap.
+ * If not, then add the nodeObj to the Object graphMap
+ * @param {Object} graphMap
+ * @param {Object} idToNodeObjMap
+ * @param {String} potentialNodeId
+ * @param {String} potentialNodeName
+ * @param {String} callable
+ * @param {String} parentId
+ * @param {String} variableType
+ */
 const checkIfNodeIsAdded = (
   graphMap,
   idToNodeObjMap,
@@ -43,6 +63,12 @@ const checkIfNodeIsAdded = (
   }
 }
 
+/**
+ * Parses a string for its callable and its task name.
+ * The callable will be used to find subworkflows and the task name
+ * will be used to id and name the node.
+ * @param {String} potentialCallableAndTaskNameString
+ */
 const separateCallableAndTaskName = potentialCallableAndTaskNameString => {
   const separatorChar = "&"
   const returnObj = {}
@@ -69,12 +95,23 @@ const separateCallableAndTaskName = potentialCallableAndTaskNameString => {
   return returnObj
 }
 
+/**
+ * Sets the directParent field of nodeId to parentId.
+ * @param {String} nodeId
+ * @param {String} parentId
+ * @param {Object} idToNodeObj
+ */
 const setParent = (nodeId, parentId, idToNodeObj) => {
   if (nodeId !== parentId) {
     idToNodeObj[nodeId].directParent = parentId
   }
 }
 
+/**
+ * A helper function that parses for a substring that comes after any separator character.
+ * @param {String} fullStringName
+ * @param {String} characterSeparator
+ */
 const findStringAfterSeparator = (fullStringName, characterSeparator) => {
   if (fullStringName === null) {
     return ""
@@ -83,6 +120,12 @@ const findStringAfterSeparator = (fullStringName, characterSeparator) => {
   const characterIndex = fullStringName.indexOf(characterSeparator)
   return fullStringName.substring(characterIndex + 1)
 }
+
+/**
+ * A helper function that parses for a substring that comes before any separator character.
+ * @param {String} fullStringName
+ * @param {String} characterSeparator
+ */
 
 const findStringBeforeSeparator = (fullStringName, characterSeparator) => {
   if (fullStringName === null) {
@@ -169,6 +212,17 @@ const addEdgeToGraph = (fromNodeDotId, toNodeDotId, workflowId, graphMap) => {
   graphMap[fromNodeId].push(toNodeId)
 }
 
+/**
+ *
+ * Iterate through a childArray received from the dotparser object and for each
+ * index of the array, you build a node.
+ *
+ * @param {Object[]} childArray
+ * @param {Object} graphMap
+ * @param {Object} idToNodeObj
+ * @param {String} parentId
+ * @param {String} workflowId
+ */
 const iterateChildArray = (
   childArray,
   graphMap,
@@ -262,6 +316,14 @@ const iterateChildArray = (
   })
 }
 
+/**
+ *
+ * Parses callable string into a subworkflow alias and a workflow name.
+ *
+ * @param {String} callableString
+ * @returns {Object}
+ */
+
 export const parseCallable = callableString => {
   if (callableString === null) {
     return { alias: null, name: null }
@@ -278,6 +340,16 @@ export const parseCallable = callableString => {
   return returnObj
 }
 
+/**
+ *
+ * Parse childArray data into idToNodeObj and graphMap
+ * @param {Object[]} childArray
+ * @param {Object} graphMap
+ * @param {Object} idToNodeObj
+ * @param {String} parentId
+ * @param {String} workflowId
+ * @returns {Object}
+ */
 export const parseChildArray = (
   childArray,
   graphMap,
@@ -296,6 +368,11 @@ export const parseChildArray = (
   return returnGraphAndIdToNodeMap
 }
 
+/**
+ * Reads dot string and returns an object that contains directed graph data in an easily readable format.
+ * @param {String} currentDotString
+ * @returns {Object}
+ */
 export const readDotString = currentDotString => {
   const abstractSyntaxTree = dotparser(currentDotString)
   const workflowId = abstractSyntaxTree[0].id

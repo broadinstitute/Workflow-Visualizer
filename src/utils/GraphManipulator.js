@@ -29,7 +29,14 @@ export default class GraphManipulator {
   }
 
   /**
-   * @param {Array} nodeArray
+   * Used to hide nodes when choosing the display option for shards.
+   * One problem with this implementation is that the edges of the nodes are still visible in the graph and
+   * the hidden nodes still take up space in the graph.
+   *
+   * However, the logic to properly remove the nodes entirely from the graph while still
+   * keeping the rules of the graph consistent is quite difficult. So, we've
+   * elected to go with this subpar implementation.
+   * @param {Object[]} nodeArray
    */
   hideNodeArray = nodeArray => {
     nodeArray.forEach(node => {
@@ -39,6 +46,11 @@ export default class GraphManipulator {
     })
   }
 
+  /**
+   * Used to un-hiude nodes when choosing the display option for shards. As described in hideNodeArray,
+   * this implementation has some problems but is the only solution that does not include convoluted logic.
+   * @param {Array} nodeArray
+   */
   displayNodeArray = nodeArray => {
     nodeArray.forEach(node => {
       node.style("visibility", "visible")
@@ -46,6 +58,12 @@ export default class GraphManipulator {
     })
   }
 
+  /**
+   *
+   * Decides which shards to show based on typeOfDisplay.
+   * @param {String} typeOfDisplay
+   * @param {Object} metadata
+   */
   displayShards = (typeOfDisplay, metadata) => {
     this.updateNodes(metadata)
     if (typeOfDisplay === "smart") {
@@ -80,7 +98,13 @@ export default class GraphManipulator {
     }
   }
 
-  collapseArray = array => {
+  /**
+   * Collapses all the children for each parent node in this array which means we remove all
+   * descendants of given parent from the graph and then change the type associated with the parent node
+   * back into a single-task.
+   * @param {Object[]} array
+   */
+  collapseNodesInArray = array => {
     const topLevelParentList = []
     array.forEach(parent => {
       const parentAttribute = parent.data("parent")
@@ -95,7 +119,11 @@ export default class GraphManipulator {
     })
   }
 
-  collapseAll = () => {
+  /**
+   * Finds all active parents in the graph, removes their descendants, and reverts said parent node back into a
+   * single-task node.
+   */
+  collapseAllParents = () => {
     const parentCollection = this.cy.filter("node:parent")
 
     const subworkflowParentsCollection = parentCollection.filter(
@@ -104,18 +132,20 @@ export default class GraphManipulator {
     const subworkflowParents = this.parseCollectionToArray(
       subworkflowParentsCollection
     )
-    this.collapseArray(subworkflowParents)
-
-    // const scatterParentsCollection = parentCollection.filter(
-    //   '[parentType = "scatterParent"]'
-    // )
-    // const scatterParents = this.parseCollectionToArray(scatterParentsCollection)
-    // this.collapseArray(scatterParents)
+    this.collapseNodesInArray(subworkflowParents)
   }
 
+  /**
+   * Expands graph by given number layers (numberExpansions).
+   * This functionality is achieved by collapsing all parents initially and then expanding layers iteratively.
+   * First, we expand all of layer 1, then layer 2, and so on.
+   *
+   * @param {number} numberExpansions
+   * @param {Object} jsonMetadata
+   */
   expandLayers = (numberExpansions, jsonMetadata) => {
     // collapse all to start from the top and make sure they have statuses
-    this.collapseAll()
+    this.collapseAllParents()
     this.updateNodes(jsonMetadata)
 
     let loops = numberExpansions
@@ -152,18 +182,39 @@ export default class GraphManipulator {
     }
   }
 
+  /**
+   * Checks if the array of node objects all have the type: shard.
+   * @param {Object[]} nodeArray
+   * @returns {boolean}
+   */
   isScatter = nodeArray => {
     return nodeArray.every(node => {
       return node.data("type") === "shard"
     })
   }
 
+  /**
+   * Each node has its ancestors contained in its node id.
+   * We are separating the parent id from the shard in this function.
+   * @param {String} shardId
+   * @returns {String}
+   */
   findParentPrefixOfShardId = shardId => {
     const lastIndexOfGreaterThan = shardId.lastIndexOf(">")
     const parentPrefix = shardId.substring(0, lastIndexOfGreaterThan)
     return parentPrefix
   }
 
+  /**
+   *
+   * Removes the node with the removedNodeId and its corresponding edges.
+   * New edges are created to replace the removed edges.
+   * These new edges are returned as hiddenNodesJson.
+   * @param {String} removedNodeId
+   * @param {String} incomingNodeId
+   * @param {String} outgoingNodeId
+   * @returns {String}
+   */
   createHiddenNodesData = (removedNodeId, incomingNodeId, outgoingNodeId) => {
     // this is for hidden nodes field
     const edgeToIncomingNodeId = buildEdgeText(incomingNodeId, removedNodeId)
@@ -198,6 +249,12 @@ export default class GraphManipulator {
     return hiddenNodesJson
   }
 
+  /**
+   * Adds the removedNodeData to the cy scratch which is a place to store miscellaneous
+   * data of the graph.
+   * @param {String} removedNodeId
+   * @param {Object} removedNodeData
+   */
   updateRemovedNodeDataScratch = (removedNodeId, removedNodeData) => {
     // check if dictionary is initialized. If not, make it. If yes, get it into an object.
     const removedNodeJson = this.cy.scratch("removedNodes")
@@ -208,6 +265,19 @@ export default class GraphManipulator {
     this.cy.scratch("removedNodes", updatedRemovedNodeJson)
   }
 
+  /**
+   *
+   * Creates scatter edges between two scatter calls when basic view is turned on.
+   *
+   * Creates replacement edges for all incoming / outgoing nodes of removedNodes.
+   * This call is used for the specific case in which incoming and outgoing nodes are all shards.
+   * The edge routing then becomes specific to shard index rather than just doing all possible edge
+   * combinations.
+   *
+   * @param {Object[]} incomingNeighborArray
+   * @param {Object[]} outgoingNeighborArray
+   * @param {String} removedNodeId
+   */
   createBasicScatterEdges = (
     incomingNeighborArray,
     outgoingNeighborArray,
@@ -240,6 +310,18 @@ export default class GraphManipulator {
     this.batchAddEdges(edgesJsonArray)
   }
 
+  /**
+   * Creates replacement edges when basic view is turned on to replace the edges incident
+   * to removedNode. Therefore, you create new edges to directly connect the incoming and outgoing nodes of
+   * given removed node.
+   *
+   * This function is used in most cases except for when you are connecting two scatters. In that case,
+   * GraphManipulator will use createBasicScatterEdges.
+   *
+   * @param {Object[]} incomingNeighborArray
+   * @param {Object[]} outgoingNeighborArray
+   * @param {String} removedNodeId
+   */
   createBasicEdges = (
     incomingNeighborArray,
     outgoingNeighborArray,
@@ -268,11 +350,12 @@ export default class GraphManipulator {
     this.batchAddEdges(edgeJsonArray)
   }
 
+  /**
+   * Function controls the high level logic to create a basic view which is
+   * removing non-call nodes+edges incident to non-call nodes and then remapping
+   *  edges to account for missing nodes.
+   */
   createBasicView = () => {
-    // const nodesOnlyInAdvancedViewCollection = this.cy.nodes(
-    //   '[variableClass != "call"][variableClass != "scatter"][variableClass != "if"][type != "shard"]'
-    // )
-
     const filterNonParents = this.cy.nodes('[type != "parent"]')
     const nodesOnlyInAdvancedViewCollection = filterNonParents.filter(
       "[^status]"
@@ -316,6 +399,14 @@ export default class GraphManipulator {
     })
   }
 
+  /**
+   * Takes in an object that has (key,value) pairs such that the keys are removed node ids and
+   * values are their respective data. Then, the values of the nodes are pushed into an array to be
+   * added in a batch back to the graph (thus adding nodes back to the graph).
+   *
+   * @param {Object} removedNodeDict
+   * @returns {Object[]}
+   */
   generateNodeJson = removedNodeDict => {
     const nodeArray = []
     Object.keys(removedNodeDict).forEach(nodeId => {
@@ -325,6 +416,9 @@ export default class GraphManipulator {
     return nodeArray
   }
 
+  /**
+   * Adds back all removedNodes contained in the scratch and then resets scratch.
+   */
   addRemovedNodes = () => {
     const removedNodeString = this.cy.scratch("removedNodes")
     const removedNodeDict = JSON.parse(removedNodeString)
@@ -343,6 +437,12 @@ export default class GraphManipulator {
     this.cy.scratch("removedNodes", stringifyEmptyDict)
   }
 
+  /**
+   * Creates detailed view by adding back removed nodes based on scratch data.
+   * Then, each of the new edges created when we initially switched to basic view will have
+   * hidden node data. Through this hidden node data point associated with each edge,
+   * we will be able to add back lost edges.
+   */
   createDetailedView = () => {
     this.addRemovedNodes()
 
@@ -385,11 +485,20 @@ export default class GraphManipulator {
     this.batchAddEdges(edgeJson)
   }
 
+  /**
+   * Checks if a node exists in the graph
+   * @param {String} nodeId
+   * @returns {Boolean}
+   */
   doesNodeExist = nodeId => {
     const nodeObj = this.cy.getElementById(nodeId)
     return nodeObj.length !== 0
   }
 
+  /**
+   * Scans metadata to change the data associated with each node.
+   * @param {Object} metadata
+   */
   updateNodeStatus = metadata => {
     const statusDictionary = returnDataDictionary(metadata)
 
@@ -405,6 +514,10 @@ export default class GraphManipulator {
     })
   }
 
+  /**
+   * Adds a length description to a scatter node's name based on metadata results.
+   * @param {Object} metadata
+   */
   addScatterLengthToName = metadata => {
     const newScattersCollection = this.cy
       .filter("node[parentType = 'scatterParent']")
@@ -423,11 +536,21 @@ export default class GraphManipulator {
     })
   }
 
+  /**
+   * Function will update the data associated with each node based on metadata.
+   * Then, it will add a length field to a scatter node's name.
+   * @param {Object} metadata
+   */
   updateNodes = metadata => {
     this.updateNodeStatus(metadata)
     this.addScatterLengthToName(metadata)
   }
 
+  /**
+   * Helper function that takes in an edgeArray and adds those edges back to the graph.
+   * This function can be reused to batch-add any edges
+   * @param {String[]} edgesArray
+   */
   batchAddEdges = edgesArray => {
     if (edgesArray.length > 0) {
       const edgesJSONObj = {}
@@ -439,6 +562,20 @@ export default class GraphManipulator {
     }
   }
 
+  /**
+   * This function finds matches the subworkflow name based on the initial dot file input. Then,
+   * adds the subworkflow dot file to the workflow. Then we remap the edges accordingly.
+   *
+   * This function will not work in practice in its current state. What this function needs is
+   * an api endpoint similiar to the metadata endpoint that can access subworkflow dot files and
+   * return those dot files.
+   *
+   * Most of the groundwork has been laid down. You can see by the callable variable that you can specifically fetch a
+   * subworkflow wdl by its file name.
+   *
+   * @param {String} subworkflowNodeId
+   *
+   */
   expandSubworkflow = subworkflowNodeId => {
     const subworkflowNodeObj = this.cy.getElementById(subworkflowNodeId)
 
@@ -534,6 +671,12 @@ export default class GraphManipulator {
     this.mapChildEdgesToParentNode(descendantsCollection, parentNodeId, true)
   }
 
+  /**
+   *
+   * Converts a parent node back into a single-task node by removing all of this node's descendants (children and children's children
+   * and so on).
+   * @param {String} selectedParentNodeId
+   */
   collapseParent = selectedParentNodeId => {
     const parentNode = this.cy.getElementById(selectedParentNodeId)
     parentNode.data("type", "single-task")
@@ -555,6 +698,12 @@ export default class GraphManipulator {
     this.distributeParentEdges()
   }
 
+  /**
+   *
+   * Checks metadata for shards associated with given node and then creates shards.
+   * @param {String} scatterParentNodeId
+   * @param {Object} jsonMetadata
+   */
   scatter = (scatterParentNodeId, jsonMetadata) => {
     const scatterParentNode = this.cy.getElementById(scatterParentNodeId)
     scatterParentNode.data("type", "parent")
@@ -587,11 +736,23 @@ export default class GraphManipulator {
     this.distributeParentEdges()
   }
 
+  /**
+   * Removes edge without removing node associated with said edge.
+   * @param {String} edgeId
+   */
   removeSingleEdge = edgeId => {
     const removeEdgeObj = this.cy.getElementById(edgeId)
     removeEdgeObj.remove()
   }
 
+  /**
+   *
+   * Function to create edges.
+   * @param {String} incomingNodeId
+   * @param {String} outgoingNodeId
+   * @param {String[]} hiddenNodesData
+   * @returns {Object}
+   */
   createEdgeJSON = (incomingNodeId, outgoingNodeId, hiddenNodesData = null) => {
     const edgeId = buildEdgeText(incomingNodeId, outgoingNodeId)
     let singleEdgeJSON
@@ -613,6 +774,17 @@ export default class GraphManipulator {
     return singleEdgeJSON
   }
 
+  /**
+   * A helper function to distributeParentEdges(). This distributes incoming edges of
+   * a parent to children nodes of the parent without incoming edges.
+   *
+   * This logic choice of distributing to child nodes without incoming edges generally works but may fail in
+   * edge cases.
+   * @param {String[]} listOfIncomingNodes
+   * @param {Object[]} childrenWithoutIncomingEdges
+   * @param {Object} parentNode
+   * @returns {Object[]}
+   */
   mapIncomingParentEdgesToChildNodes = (
     listOfIncomingNodes,
     childrenWithoutIncomingEdges,
@@ -651,6 +823,17 @@ export default class GraphManipulator {
     return edgeArray
   }
 
+  /**
+   * A helper function to distributeParentEdges(). This distributes outgoing edges of a parent
+   * to the children of the parent which do not have outgoing edges.
+   *
+   * This logic choice of distributing top children without outgoing edges generally works, but
+   * might fail in certain edge cases.
+   * @param {String[]} listOfOutgoingNodes
+   * @param {Object[]} childrenWithoutOutgoingEdges
+   * @param {Object} parentNode
+   * @returns {Object[]}
+   */
   mapOutgoingParentEdgesToChildNodes = (
     listOfOutgoingNodes,
     childrenWithoutOutgoingEdges,
@@ -694,6 +877,14 @@ export default class GraphManipulator {
     return edgeArray
   }
 
+  /**
+   * A helper function that converts a collection of elements (which is the default
+   * format to return data from the cy object of the cytoscape package) to a simpler format
+   * of an array.
+   * @param {Object} collection
+   * @returns {Object[]}
+   *
+   */
   parseCollectionToArray = collection => {
     const array = []
 
@@ -705,6 +896,13 @@ export default class GraphManipulator {
     return array
   }
 
+  /**
+   * Helper function to distributeParentEdges
+   * This function is used in a reduce to accumulate all new edges to batch created together.
+   * @param {Object[]} accumulatedNewEdges
+   * @param {Object} parentNode
+   * @returns {Object[]}
+   */
   parseParentDataToMakeChildEdges = (accumulatedNewEdges, parentNode) => {
     const listOfOutgoingNodes = this.getOutgoingNodeIds(parentNode)
     const listOfIncomingNodes = this.getIncomingNodeIds(parentNode)
@@ -739,7 +937,10 @@ export default class GraphManipulator {
 
   /**
    * This function distributes edges point at a parent and remaps it towards the correct child
-   * which are nodes who do not have an incoming edge.
+   * which are nodes who do not have an incoming edges or outgoing edges.
+   *
+   * The logic of the workflow visualizer will never allow parent nodes to have edges pointing directly to it.
+   * Instead, we have a function that will generally remap parent edges to its children
    */
 
   distributeParentEdges = () => {
@@ -756,12 +957,22 @@ export default class GraphManipulator {
     this.batchAddEdges(edgesArray)
   }
 
+  /**
+   * Helper function to get outgoing nodes of a given node in array form
+   * @param {Object} node
+   * @returns {Object[]}
+   */
   getOutgoingNodesObj = node => {
     const outgoingNodes = node.outgoers().filter("nodes")
     const outgoingNodesArray = this.parseCollectionToArray(outgoingNodes)
     return outgoingNodesArray
   }
 
+  /**
+   * Helper function to get an array of outgoing node ids from a given node object
+   * @param {Object} node
+   * @returns {String[]}
+   */
   getOutgoingNodeIds = node => {
     const outgoingNodeIdsList = this.getOutgoingNodesObj(node).map(node => {
       return node.id()
@@ -769,6 +980,11 @@ export default class GraphManipulator {
     return outgoingNodeIdsList
   }
 
+  /**
+   * Helper function to get incoming nodes of a given node in array form
+   * @param {Object} node
+   * @returns {Object[]}
+   */
   getIncomingNodesObj = node => {
     const incomingNodes = node.incomers().filter("nodes")
 
@@ -776,6 +992,11 @@ export default class GraphManipulator {
     return incomingNodesArray
   }
 
+  /**
+   * Helper function to get an array of incoming node ids from a given node object
+   * @param {Object} node
+   * @returns {String[]}
+   */
   getIncomingNodeIds = node => {
     const incomingNodeIdsList = this.getIncomingNodesObj(node).map(node => {
       return node.id()

@@ -24,6 +24,7 @@ import {
 import "./Sidebar.css"
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
 import { Done, Error } from "@material-ui/icons"
+import PropTypes from "prop-types"
 
 /**
  * Sidebar presents additional information about the workflow and controls.
@@ -32,23 +33,6 @@ import { Done, Error } from "@material-ui/icons"
 const ExpandOptions = props => {
   return (
     <Box>
-      {/* <Typography>
-        Expand first&nbsp;
-        <Select
-          value={props.displayLayers}
-          color="primary"
-          onChange={props.changeDisplayedLayers}
-        >
-          <MenuItem value="zero">0</MenuItem>
-          <MenuItem value="one">1</MenuItem>
-          <MenuItem value="two">2</MenuItem>
-          <MenuItem value="three">3</MenuItem>
-          <MenuItem value="four">4</MenuItem>
-          <MenuItem value="five">5</MenuItem>
-          <MenuItem value="all">ALL (∞)</MenuItem>
-        </Select>
-        layers
-      </Typography> */}
       <Grid container direction="row" alignItems="center" spacing={1}>
         <Grid item>
           <Typography>Expand first</Typography>
@@ -159,6 +143,15 @@ const AdvancedControls = props => {
       </ExpansionPanelDetails>
     </ExpansionPanel>
   )
+}
+
+AdvancedControls.propTypes = {
+  displayLayers: PropTypes.string,
+  changeDisplayedLayers: PropTypes.func,
+  displayShards: PropTypes.string,
+  changeDisplayedShards: PropTypes.func,
+  isColorBlind: PropTypes.bool,
+  toggleColoring: PropTypes.func
 }
 
 const SelectLayout = props => {
@@ -300,6 +293,23 @@ const ControlPanel = props => {
   )
 }
 
+ControlPanel.propTypes = {
+  selectedNode: PropTypes.string,
+  status: PropTypes.element,
+  layout: PropTypes.string,
+  changeLayout: PropTypes.func,
+  fitFnc: PropTypes.func,
+  forceLayoutFnc: PropTypes.func,
+  changeViewTypeFnc: PropTypes.func,
+  viewBoolean: PropTypes.bool,
+  toggleEnforceFitFnc: PropTypes.func,
+  enforceFitBoolean: PropTypes.bool,
+  toggleEnforceLayoutFnc: PropTypes.func,
+  enforceLayoutBoolean: PropTypes.bool,
+  toggleAnimation: PropTypes.func,
+  enableAnimation: PropTypes.bool
+}
+
 const WorkflowDataExpansionPanel = props => {
   return (
     <ExpansionPanel>
@@ -325,6 +335,14 @@ const WorkflowDataExpansionPanel = props => {
       </ExpansionPanelDetails>
     </ExpansionPanel>
   )
+}
+
+WorkflowDataExpansionPanel.propTypes = {
+  workflowId: PropTypes.string,
+  startTime: PropTypes.string,
+  endTime: PropTypes.string,
+  inputs: PropTypes.string,
+  outputs: PropTypes.string
 }
 
 const SingleGridItem = props => {
@@ -424,7 +442,16 @@ const HelpExpansionPanel = props => {
     </ExpansionPanel>
   )
 }
-
+/**
+ * A functional component that wholly contains the UI elements of the Sidebar component.
+ * The sidebar is split into four parts, a control panel with simple controls for the graph,
+ * advanced controls that give more complex and more buggy controls for the graph,
+ * an expansion panel that displays data from the workflow, and a help panel that explains
+ * how to use this workflow visualizer.
+ *
+ * Each of these parts are their own component.
+ * @param {Object} props
+ */
 const RenderSidebar = props => {
   return (
     <Box className="sidebar-div">
@@ -465,6 +492,37 @@ const RenderSidebar = props => {
   )
 }
 
+RenderSidebar.propTypes = {
+  selectedNode: PropTypes.string,
+  status: PropTypes.element,
+  layout: PropTypes.string,
+  changeLayout: PropTypes.func,
+  displayLayers: PropTypes.string,
+  changeDisplayedLayers: PropTypes.func,
+  displayShards: PropTypes.string,
+  changeDisplayedShards: PropTypes.func,
+  workflowId: PropTypes.string,
+  startTime: PropTypes.string,
+  endTime: PropTypes.string,
+  fitFnc: PropTypes.func,
+  forceLayoutFnc: PropTypes.func,
+  changeViewTypeFnc: PropTypes.func,
+  viewBoolean: PropTypes.bool,
+  toggleEnforceFitFnc: PropTypes.func,
+  enforceFitBoolean: PropTypes.bool,
+  toggleEnforceLayoutFnc: PropTypes.func,
+  enforceLayoutBoolean: PropTypes.bool,
+  toggleAnimation: PropTypes.func,
+  enableAnimation: PropTypes.bool,
+  isColorBlind: PropTypes.bool,
+  toggleColoring: PropTypes.func,
+  inputs: PropTypes.string,
+  outputs: PropTypes.string
+}
+
+/**
+ * Component displays a UI with information about the workflow and functions to control the graph.
+ */
 class Sidebar extends Component {
   constructor(props) {
     super(props)
@@ -474,18 +532,43 @@ class Sidebar extends Component {
     this.changeDisplayedShards = this.changeDisplayedShards.bind(this)
   }
 
+  /**
+   *
+   * Listens for an event from a change from the drop down menu (select), and if the drop down menu selection changes,
+   * then the graph will change its layout according to the drop down menu change.
+   * This function is necessary because the props.changeLayout function does not listen for an event.
+   * @param {Event} event
+   */
   changeLayout(event) {
     this.props.changeLayout(event.target.value)
   }
 
+  /**
+   *
+   * Listens for an event from a change from the drop down menu (select), and if the drop down menu selection changes,
+   * then the graph will change the number of layers displayed.
+   * This function is necessary because the props.changeDisplayedLayers function does not listen for an event.
+   * @param {Event} event
+   */
   changeDisplayedLayers(event) {
     this.props.changeDisplayedLayers(event.target.value)
   }
 
+  /**
+   * Listens for an event from a change from drop down menu (select), and if the drop down menu selection changes,
+   * then the graph will change the types of shards displayed.
+   * This function is necessary because props.changeDisplayedShards function does nto listen for an event.
+   * @param {Event} event
+   */
   changeDisplayedShards(event) {
     this.props.changeDisplayedShards(event.target.value)
   }
 
+  /**
+   * Takes in a simple string status and returns a react component to display based on the type of
+   * status the workflow is currently in.
+   * @param {String} currentStatus
+   */
   prepareStatus(currentStatus) {
     let statusSymbol = null
     let statusText = `(${currentStatus})`
@@ -575,6 +658,29 @@ class Sidebar extends Component {
       />
     )
   }
+}
+
+Sidebar.propTypes = {
+  currentSelectedNodeData: PropTypes.string,
+  changeLayout: PropTypes.func,
+  layout: PropTypes.string,
+  changeDisplayedLayers: PropTypes.func,
+  displayLayers: PropTypes.string,
+  changeDisplayedShards: PropTypes.func,
+  displayShards: PropTypes.string,
+  metadata: PropTypes.object,
+  fitFnc: PropTypes.func,
+  forceLayoutFnc: PropTypes.func,
+  toggleViewFnc: PropTypes.func,
+  viewBoolean: PropTypes.bool,
+  toggleEnforceFitFnc: PropTypes.func,
+  enforceFitBoolean: PropTypes.bool,
+  toggleEnforceLayoutFnc: PropTypes.func,
+  enforceLayoutBoolean: PropTypes.bool,
+  toggleAnimation: PropTypes.func,
+  enableAnimation: PropTypes.bool,
+  isColorBlind: PropTypes.bool,
+  toggleColoring: PropTypes.func
 }
 
 export default Sidebar

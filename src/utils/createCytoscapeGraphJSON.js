@@ -1,5 +1,9 @@
 import { buildEdgeText } from "./idGeneration"
 
+/**
+ * Creates an array of node objects to be added to the graph
+ * @param {Object} idToNodeMap
+ */
 export const initializeNodesJSON = idToNodeMap => {
   const nodesArray = []
   const arrayOfAllNodes = Object.keys(idToNodeMap)
@@ -38,6 +42,10 @@ export const initializeNodesJSON = idToNodeMap => {
   return nodesArray
 }
 
+/**
+ * Creates an array of edges to be added to the graph
+ * @param {Object} graph
+ */
 export const initializeEdgesJSON = graph => {
   const edgesArray = []
   const arrayOfAllNodes = Object.keys(graph)
@@ -55,6 +63,10 @@ export const initializeEdgesJSON = graph => {
   return edgesArray
 }
 
+/**
+ * Creates an elements object that contains all the nodes and edges that will be created in the graph.
+ * @param {Object} graphAndIdToNodeMapObj
+ */
 export const returnGraphJson = graphAndIdToNodeMapObj => {
   const graph = graphAndIdToNodeMapObj.graph
   const idToNodeMap = graphAndIdToNodeMapObj.idToNodeMap
