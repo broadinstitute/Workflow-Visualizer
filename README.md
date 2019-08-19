@@ -1,6 +1,8 @@
 # Workflow Visualizer
 
-![A sample workflow image](screenshots/main.png "Workflow")
+![A sample workflow image](screenshots/Main.png "Workflow")
+
+---
 
 This project helps visualize the progress of computational workflows on the Cromwell engine. Using a directed graph UI, a user will be able to see the status of individual calls and tasks of a workflow as well as see data generated from the workflow.
 
@@ -50,10 +52,16 @@ Scatters work as follows: first you parse the metadata, then you look for data a
 
 If statements work as follows: unlike subworkflows and scatters, if statements are automatically expanded. If the if statement is not actually ran (AKA the condition was not met), none of the nodes inside the workflow will be initialized and will stay the gray/uninitialized color.
 
+---
+
 ##### Other Images
 
 ![Two scatter workflow img](screenshots/pic2.png "A workflow with two scatters")
 
+---
+
 ![Workflow in progress image](screenshots/running.png "Workflow in progress")
+
+---
 
 ![Finished Workflow image](screenshots/done.png "Finished workflow")
