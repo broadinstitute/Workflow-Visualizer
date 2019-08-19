@@ -4,7 +4,7 @@ import klay from "cytoscape-klay"
 import cytoscape from "cytoscape"
 
 import Sidebar from "./Sidebar"
-import "./GraphView.css"
+import "./WorkflowVisualizer.css"
 
 import * as api from "../utils/api"
 import { returnGraphJson } from "../utils/createCytoscapeGraphJSON"
@@ -19,7 +19,7 @@ import PropTypes from "prop-types"
 
 let graphManipulatorObj
 
-const currentDotFile = dotFiles.smart_seq_2_single_cell
+const currentDotFile = dotFiles.nested_subworkflows_4
 /**
  * Component that represents the actual directed graph of the workflow as well as a sidebar to control the graph
  *

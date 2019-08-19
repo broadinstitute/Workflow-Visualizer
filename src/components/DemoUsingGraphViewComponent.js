@@ -1,7 +1,7 @@
 import React from "react"
 // import Parent from './Parent'
 // import ParentV2 from './ParentV2'
-import GraphView from "./GraphView"
+import WorkflowVisualizer from "./WorkflowVisualizer"
 import * as dotFiles from "../utils/dotFiles"
 import * as api from "../utils/api"
 
@@ -34,7 +34,7 @@ class DemoUsingGraphViewComponent extends React.Component {
     return (
       <div className="App">
         <header className="App-header">
-          <GraphView workflowId={this.state.workflowId} />
+          <WorkflowVisualizer workflowId={this.state.workflowId} />
         </header>
       </div>
     )
