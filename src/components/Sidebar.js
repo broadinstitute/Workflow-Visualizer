@@ -422,10 +422,11 @@ const HelpExpansionPanel = props => {
           <Grid item>
             <Typography paragraph={true}>
               {" "}
-              Left click to drag and select nodes. Right click (two finger click
-              on Mac) to expand scatters (stars) and subworkflows (triangles).
+              Left click to drag and select nodes. <br />
+              Right click (two finger click on Mac) to expand scatters (stars)
+              and subworkflows (triangles). <br />
               Then, right click again on gray areas to collapse subworkflows and
-              scatters
+              scatters.
             </Typography>
           </Grid>
           <Grid item>
