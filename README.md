@@ -29,7 +29,7 @@ For example,
 ### Current Problems
 
 1. There is currently no API endpoint to convert WDL files to DOT files. So, right now we are manually pre-converting WDL to DOT via Womtool. For this to work smoothly, it is necessary to have an endpoint that workflow visualizer can hit based on the workflow id to fetch the corresponding dot files.
-2. The way that we locate subworkflows will not always work. Currently, in GraphManipulator.js, we find the alias name associated with a subworkflow. Then, it fetches a subworkflow with its manually pre-computed dot file derived from its wdl file. This problem is hard to solve without the proper endpoints created.
+2. The way that we locate subworkflows will not always work. Currently, in GraphManipulator.js, we find the alias name associated with a subworkflow. Then, it fetches a subworkflow with its manually pre-computed dot file derived from its wdl file. This problem is hard to solve without the proper endpoints created, because depending on how the subworkflow file fetching is implemented, it will change how GraphManipulator.js will operate when parsing for subworkflow names.
 3. Womtool needs modification to add an additional field. I've pushed this as a branch onto the cromwell repo.
 
 ### How Workflow Visualizer Works.
